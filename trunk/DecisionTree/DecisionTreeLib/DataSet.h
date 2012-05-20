@@ -25,12 +25,19 @@ namespace Data {
 		}
 
 		// ------------------------------------------------------------------
+		// OBJECT ACCESS 
+		// -----------------------------------------------------------------
+		inline const AttributeValue* getObject(unsigned objectIndex) const {
+			assert(objectIndex < objectsCount);
+			return objects + objectIndex * attributesCount;
+		}
+
+		// ------------------------------------------------------------------
 		// ATTRIBUTE ACCESS 
 		// ------------------------------------------------------------------
 		inline AttributeValue getAttributeValue(unsigned objectIndex, unsigned attributeIndex) const {
-			assert(objectIndex < objectsCount);
 			assert(attributeIndex < attributesCount);
-			return objects[objectIndex * attributesCount + attributeIndex];
+			return getObject(objectIndex)[attributeIndex];
 		}
 
 		inline AttributeType getAttributeType(unsigned attributeIndex) const { 
