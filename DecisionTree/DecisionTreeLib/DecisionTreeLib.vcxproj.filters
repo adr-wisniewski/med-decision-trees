@@ -21,9 +21,6 @@
     <ClInclude Include="Node.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NodeTest.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="DataSet.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -48,9 +45,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Node.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="NodeTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DataSet.cpp">

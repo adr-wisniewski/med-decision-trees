@@ -19,48 +19,118 @@ struct SprintBuilder::ContinousAttributeComparator {
 	}	
 };
 
-SprintBuilder::SprintBuilder(const Data::DataSet& data)
-	: data(data)
+SprintBuilder::SprintBuilder(const Data::DataSet& data, unsigned minNodeSize, float maxPurity)
+	: data(data), minNodeSize(minNodeSize), maxPurity(maxPurity)
 {
+	// empty
 }
 
 
 std::auto_ptr<Node> SprintBuilder::build() {
-	
+	assert(attributeListStack.size() == 0);
+
 	// build from the root
-	prepareAttributeListStack();
 	Node *root = new Node(getAllObjectsVector());
 	buildRecursive(root);
+
+	assert(attributeListStack.size() == 0);
+
+	return std::auto_ptr<Node>(root);
 }
 
 void SprintBuilder::buildRecursive(Node *node) {
-	// TODO: call best split and use its test in current, then for each subnode update attribute lists and call recursively
+	// calculate majority class
+	std::vector<unsigned> classesCount(data.getClassValues(), 0);
+	for(auto i = node->getTrainingObjects().begin(), e = node->getTrainingObjects().end(); i != e; ++i) { // O(n)
+		classesCount[data.getClass(*i)] += 1;
+	}
+
+	auto maximum = std::max_element(classesCount.begin(), classesCount.end()); assert(maximum != classesCount.end()); // O(c)
+	unsigned majorityClass = *maximum;
+	node->SetMajorityClass(majorityClass);
+	node->SetPurity(classesCount[majorityClass]/static_cast<float>(node->getTrainingObjects().size()));
+
+	// check stop condition
+	bool leaf = true;
+	if (!stopCondition(node)) {
+
+		prepareAttributeListStack(node); // TODO: FIXME
+
+		SplitCandidate split;
+		if(findBestSplit(split)) {
+			assert(split.giniIndex != std::numeric_limits<float>::infinity());
+			NodeTest &test = node->GetTest();
+			test.SetAttributeIndex(split.attributeIndex);
+			test.SetAttributeType(data.getAttributeType(split.attributeIndex));
+			test.GetAttributeValues().swap(split.attributeValues);
+			
+
+			// split training objects
+			std::vector<unsigned> leftObjects;
+			std::vector<unsigned> rightObjects;
+			for(auto o = node->getTrainingObjects().begin(), e = node->getTrainingObjects().end(); o != e; ++o) { // O(n)
+				unsigned object = *o;
+				if(node->test(data.getObject(object))) {
+					rightObjects.push_back(object);
+				} else {
+					leftObjects.push_back(object);
+				}
+
+				// recursive build right
+				Node *right = new Node(rightObjects);
+				buildRecursive(right);
+				node->setRightChild(right);
+
+				// recursive build left
+				Node *left = new Node(leftObjects);
+				buildRecursive(left);
+				node->setLeftChild(left);
+			}
+		}
+
+		// pop current attribute lists from the stack
+		attributeListStack.pop_back(); // TODO: FIXME
+	}
+
+	node->SetLeaf(leaf);
 }
 
-void SprintBuilder::findBestSplit(SplitCandidate &best) {
+bool SprintBuilder::stopCondition(Node *node) {
+	bool stop = false;
+
+	stop = stop || node->getTrainingObjects().size() <= minNodeSize; // min size constraint
+	stop = stop || node->GetPurity() >= maxPurity; // min size constraint
+
+	return stop;
+}
+
+bool SprintBuilder::findBestSplit(SplitCandidate &best) {
 	assert(attributeListStack.size() > 0);
-	assert(attributeListStack.back().size() > 0);
  
 	// find best split along all splits
 	best.giniIndex = std::numeric_limits<float>::infinity(); // marker to see if we found any split
-	SplitCandidate current;
-	auto litsts = attributeListStack.back();
-	for(auto i = litsts.begin(), e = litsts.end(); i != e; ++i) {
-		if (i->type == Data::AttributeNominal ) {
-			rateNominalSplit(*i, current);
-		} else if (i->type == Data::AttributeContinous ) {
-			rateContinousSplit(*i, current);
-		} else {
-			assert(false);
-		}
 
-		assert(current.giniIndex != std::numeric_limits<float>::infinity());
-		if (current.giniIndex < best.giniIndex) {
-			best.swap(current);
+	// split if on one of remaining attributes
+	if(attributeListStack.size() > 0 ) {
+		SplitCandidate current;
+		auto litsts = attributeListStack.back();
+		for(auto i = litsts.begin(), e = litsts.end(); i != e; ++i) {
+			if (i->type == Data::AttributeNominal ) {
+				rateNominalSplit(*i, current); // TODO: fix case with single attribute remaining
+			} else if (i->type == Data::AttributeContinous ) {
+				rateContinousSplit(*i, current); // TODO: fix case with single attribute remaining
+			} else {
+				assert(false);
+			}
+
+			if (current.giniIndex != std::numeric_limits<float>::infinity() && current.giniIndex < best.giniIndex) {
+				best.swap(current);
+			}
 		}
 	}
 
-	assert(best.giniIndex != std::numeric_limits<float>::infinity());
+	// return true if we found any split
+	return best.giniIndex != std::numeric_limits<float>::infinity();
 }
 
 void SprintBuilder::rateContinousSplit(const AttributeList &attributeList, SplitCandidate &candidate) {
@@ -88,18 +158,18 @@ void SprintBuilder::rateContinousSplit(const AttributeList &attributeList, Split
 			// split found - calculate gini index
 			float objectsAbove = 0;
 			float objectsBelow = 0;
-			for(unsigned i = 0; i < classes; ++i) {
-				objectsAbove += above[i];
-				objectsBelow += below[i];
+			for(unsigned c = 0; c < classes; ++c) {
+				objectsAbove += above[c];
+				objectsBelow += below[c];
 			}
 
 			assert(objectsAbove > 0);
 			assert(objectsBelow > 0);
 			float giniAbove = 1;
 			float giniBelow = 1;
-			for(unsigned i = 0; i < classes; ++i) {
-				float a = above[i] / objectsAbove;
-				float b = below[i] / objectsBelow;
+			for(unsigned c = 0; c < classes; ++c) {
+				float a = above[c] / objectsAbove;
+				float b = below[c] / objectsBelow;
 				giniAbove -= a * a;
 				giniBelow -= b * b;
 			}
@@ -145,7 +215,7 @@ void SprintBuilder::rateNominalSplit(const AttributeList &attributeList, SplitCa
 		objectsOut[i->objectClass] += 1;
 	}
 
-	const unsigned maxSetSize = values / 2; assert(maxSetSize > 0); // prof Kryszkiewicz optimization
+	const unsigned maxSetSize = values / 2; // prof Kryszkiewicz optimization
 	std::vector<Data::AttributeValue> attributes;
 	attributes.reserve(maxSetSize);
 
@@ -164,14 +234,18 @@ void SprintBuilder::rateNominalSplitRecursive(std::vector<Data::AttributeValue> 
 											  const unsigned values, 
 											  const unsigned maxSetSize, 
 											  SplitCandidate &candidate) {
-	assert(attributes.size <= maxSetSize);
 
-	// add current attribute
+	if(attributes.size() >= maxSetSize) {
+		return;
+	}
+
+	// add next attribute to set
 	Data::AttributeValue nextValue;
 	nextValue.nominal = 0;
 	if (attributes.size() > 0) {
 		nextValue.nominal = attributes.back().nominal + 1;
 	} 
+	attributes.push_back(nextValue);
 
 	while( attributes.back().nominal < values ) {
 
@@ -208,11 +282,9 @@ void SprintBuilder::rateNominalSplitRecursive(std::vector<Data::AttributeValue> 
 			candidate.attributeValues = attributes;
 		}
 
-		// add next attribute
-		if(attributes.size() < maxSetSize) {
-			rateNominalSplitRecursive(attributes, counts, objectsIn, objectsOut, classes, values, maxSetSize, candidate);
-		}
-
+		// extend set further
+		rateNominalSplitRecursive(attributes, counts, objectsIn, objectsOut, classes, values, maxSetSize, candidate);
+		
 		// revert histograms and increment current attribute
 		for(unsigned c = 0; c < classes; ++c) {
 			unsigned delta = counts[c*classes + attributes.back().nominal];
@@ -227,14 +299,12 @@ void SprintBuilder::rateNominalSplitRecursive(std::vector<Data::AttributeValue> 
 	attributes.pop_back();
 }
 
-void SprintBuilder::prepareAttributeListStack() {
-	assert(attributeListStack.size() == 0);
-	
-	unsigned objectsCount = data.getObjectsCount;
+void SprintBuilder::prepareAttributeListStack(Node *node) {
+	unsigned objectsCount = node->getTrainingObjects().size();
 	unsigned attributesCount = data.getAttributesCount();
 
-	// create first stack level with all attributes of all entities sorted
-	attributeListStack.resize(1);
+	// create new level
+	attributeListStack.push_back(std::vector<AttributeList>());
 	auto litsts = attributeListStack.back();
 	litsts.resize(attributesCount);
 
@@ -246,10 +316,11 @@ void SprintBuilder::prepareAttributeListStack() {
 
 		// initialize value list for all objects
 		for(unsigned o = 0; o < objectsCount; ++o) {
+			unsigned object = node->getTrainingObjects()[o];
 			AttributeListEntry &entry = list.entries[o];
 			entry.objectIndex = o;
-			entry.attributeValue = data.getAttributeValue(o, a);
-			entry.objectClass = data.getClass(o);
+			entry.attributeValue = data.getAttributeValue(object, a);
+			entry.objectClass = data.getClass(object);
 		}
 
 		// sort list

@@ -10,7 +10,7 @@ namespace Tree {
 	class SprintBuilder : public DecisionTreeBuilder
 	{
 	public:
-		SprintBuilder(const Data::DataSet& data);
+		SprintBuilder(const Data::DataSet& data, unsigned minNodeSize, float maxPurity);
 		virtual std::auto_ptr<Node> build();
 
 	private: // structures
@@ -39,7 +39,8 @@ namespace Tree {
 
 	private: // methods
 		void buildRecursive(Node *node);
-		void findBestSplit(SplitCandidate &best);
+		bool findBestSplit(SplitCandidate &best);
+		bool stopCondition(Node *node);
 
 		void rateContinousSplit(const AttributeList &attributeList, SplitCandidate &candidate);
 		void rateNominalSplit(const AttributeList &attributeList, SplitCandidate &candidate);
@@ -54,12 +55,15 @@ namespace Tree {
 
 
 		// helpers
-		void prepareAttributeListStack();
+		void prepareAttributeListStack(Node *node);
 		std::vector<unsigned> getAllObjectsVector() const;
 
 	private: // members
 		const Data::DataSet& data;
 		std::vector<std::vector<AttributeList>> attributeListStack;
+
+		unsigned minNodeSize;
+		float maxPurity;
 	};
 
 }
