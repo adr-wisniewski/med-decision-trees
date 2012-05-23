@@ -1,63 +1,85 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Data">
+      <UniqueIdentifier>{3d3ea3c8-700a-470f-a392-a0041e1f4c8b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    <Filter Include="Tree">
+      <UniqueIdentifier>{4a5a393c-bfa4-4050-80e8-7b762cbad5aa}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Benchmark">
+      <UniqueIdentifier>{ec9ffa87-2a9c-4c66-ab9e-0e37ee2d2b51}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Node.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Attribute.h">
+      <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="DataSet.h">
-      <Filter>Header Files</Filter>
+      <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="Importer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="DecisionTreeBuilder.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="Node.h">
+      <Filter>Tree</Filter>
     </ClInclude>
     <ClInclude Include="SprintBuilder.h">
-      <Filter>Header Files</Filter>
+      <Filter>Tree</Filter>
     </ClInclude>
-    <ClInclude Include="Attribute.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="DecisionTreeBuilder.h">
+      <Filter>Tree</Filter>
     </ClInclude>
-    <ClInclude Include="Utils.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="Utils.h" />
+    <ClInclude Include="Pruner.h">
+      <Filter>Tree</Filter>
+    </ClInclude>
+    <ClInclude Include="Splitter.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="ConfusionMatrix.h">
+      <Filter>Benchmark</Filter>
+    </ClInclude>
+    <ClInclude Include="Tester.h">
+      <Filter>Benchmark</Filter>
+    </ClInclude>
+    <ClInclude Include="Benchmarker.h">
+      <Filter>Benchmark</Filter>
+    </ClInclude>
+    <ClInclude Include="SprintBenchmarker.h">
+      <Filter>Benchmark</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Node.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DataSet.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Importer.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Node.cpp">
+      <Filter>Tree</Filter>
     </ClCompile>
     <ClCompile Include="SprintBuilder.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Tree</Filter>
     </ClCompile>
-    <ClCompile Include="Utils.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="Splitter.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfusionMatrix.cpp">
+      <Filter>Benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="Tester.cpp">
+      <Filter>Benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="Benchmarker.cpp">
+      <Filter>Benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="SprintBenchmarker.cpp">
+      <Filter>Benchmark</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

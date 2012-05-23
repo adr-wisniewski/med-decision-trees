@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Attribute.h"
+#include <vector>
+#include <assert.h>
 
 namespace Tree {
 
@@ -39,8 +41,8 @@ namespace Tree {
 		inline void SetMajorityClass(unsigned majorityClass) { this->majorityClass = majorityClass; }
 		inline unsigned GetMajorityClass() const {return majorityClass; }
 
-		inline void SetPurity(float purity) { this->purity = purity; }
-		inline float GetPurity() const {return purity; }
+		inline void SetConfidence(float confidence) { this->confidence = confidence; }
+		inline float GetConfidence() const {return confidence; }
 
 		inline void SetLeaf(bool leaf) { this->leaf = leaf; }
 		inline bool IsLeaf() const {return leaf; }
@@ -57,7 +59,7 @@ namespace Tree {
 		NodeTest nodeTest;
 		std::vector<unsigned> trainingObjects;
 		unsigned majorityClass;
-		float purity;
+		float confidence;
 		bool leaf;
 	};
 

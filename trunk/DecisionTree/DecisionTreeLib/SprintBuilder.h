@@ -1,6 +1,7 @@
 #pragma once
 #include "DecisionTreeBuilder.h"
 #include "Attribute.h"
+#include "DataSet.h" // TODO: FIX
 
 namespace Data {
 	class DataSet;
@@ -10,7 +11,7 @@ namespace Tree {
 	class SprintBuilder : public DecisionTreeBuilder
 	{
 	public:
-		SprintBuilder(const Data::DataSet& data, unsigned minNodeSize, float maxPurity);
+		SprintBuilder(unsigned minNodeSize, float minConfidence);
 		virtual std::auto_ptr<Node> build();
 
 	private: // structures
@@ -59,11 +60,11 @@ namespace Tree {
 		std::vector<unsigned> getAllObjectsVector() const;
 
 	private: // members
-		const Data::DataSet& data;
+		const Data::DataSet data; // TODO: fix
 		std::vector<std::vector<AttributeList>> attributeListStack;
 
 		unsigned minNodeSize;
-		float maxPurity;
+		float minConfidence;
 	};
 
 }

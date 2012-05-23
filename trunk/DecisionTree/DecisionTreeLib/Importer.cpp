@@ -325,55 +325,43 @@ inline int Importer::stringToInt(std::string s)
 
 //------------------------------------------------------------------------------
 
-std::auto_ptr<DataSet> Importer::toDataSet() {
+void Importer::toDataSet(DataSet &dataset) {
 
 	unsigned objects = mainList.size();
-	unsigned attributes = objects > 0 ? mainList.front().size() : 0;
+	unsigned attributesWithClass = objects > 0 ? mainList.front().size() : 0;
+	unsigned attributes = attributesWithClass > 0 ? attributesWithClass - 1 : 0;
 
-	// no data loaded
-	if (mainList.size() == 0 || mainList.front().size() == 0) {
-		assert(false);
-		return std::auto_ptr<DataSet>();
+	assert(objects > 0);
+	assert(attributes > 0);
+
+	dataset.allocate(objects, attributes);
+
+	for(unsigned i = 0; i < attributes; ++i) {
+		AttributeInfo &info = dataset.getAttributeInfo(i);
+		info.type = AttributeNominal; // TODO: FIXME!
+		info.nominalValuesCount = 0; // TODO: FIXME!
 	}
 
-	// introspection
-	assert(attributes > 1);
-	unsigned realAttributesCount = attributes - 1; 
-	AttributeInfo *attributeInfos = new AttributeInfo[realAttributesCount];
-	AttributeInfo classInfo;
-	for(unsigned i = 0; i < realAttributesCount; ++i) {
-		attributeInfos[i].type = AttributeNominal; // TODO: FIXME!
-
-		if (attributeInfos[i].type == AttributeNominal) {
-			attributeInfos[i].nominalValuesCount = 0; // TODO: FIXME!
-		}
-	}
-
+	AttributeInfo &classInfo = dataset.getClassInfo();
 	classInfo.type = AttributeNominal;
 	classInfo.nominalValuesCount = 0; // TODO: FIXME!
 
-	// values
-	unsigned realAttributes = attributes - 1;
-	AttributeValue *values = new AttributeValue[objects * realAttributes];
-	AttributeValue *classes = new AttributeValue[objects];
-	AttributeValue *current = values;
-	AttributeValue *currentClass = classes;
-	for(auto objectIterator = mainList.begin(), oe = mainList.end(); objectIterator != oe; ++objectIterator) {
+	unsigned objectIndex = 0;
+	unsigned attributeIndex = 0;
+	for(auto objectIterator = mainList.begin(), oe = mainList.end(); objectIterator != oe; ++objectIterator, ++objectIndex) {
+		attributeIndex = 0;
+		AttributeValue* object = dataset.getObject(objectIndex);
 		for(auto attributeIterator = objectIterator->begin(), ab = objectIterator->begin(), ae = objectIterator->end(); attributeIterator != ae; ++attributeIterator) {
 			if (attributeIterator == ab ) {
 				// first attribute is class
-				assert(currentClass < classes + objects);
-				currentClass->nominal = *attributeIterator;
-				++currentClass;
+				dataset.setClass(objectIndex, *attributeIterator);
 			} else {
-				assert(current < values + objects * attributes);
-				current->nominal = *attributeIterator; // TODO: FIXME!
-				++current;
+				// other are just attributes
+				object[attributeIndex].nominal = *attributeIterator; // TODO: FIXME!
+				++attributeIndex;
 			}
 		}
 	}
-
-	return std::auto_ptr<DataSet>(new DataSet(objects, attributes, values, classes, attributeInfos, classInfo));
 }
 
 //------------------------------------------------------------------------------

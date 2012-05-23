@@ -7,55 +7,57 @@ namespace Data {
 	class DataSet
 	{
 	public:
-		DataSet(unsigned objectsCount, 
-			unsigned attributesCount, 
-			AttributeValue* values, 
-			AttributeValue* classes,
-			AttributeInfo *attributeInfos,
-			AttributeInfo classInfo);
-
+		DataSet();
 		~DataSet(void);
+
+		void allocate(unsigned objectsCount, unsigned attributesCount);
+		void release();
 		
-		inline unsigned getObjectsCount() const { 
-			return objectsCount; 
-		}
+		inline unsigned getObjectsCount() const { return objectsCount; }
+		inline unsigned getAttributesCount() const { return attributesCount; }
 
-		inline unsigned getAttributesCount() const { 
-			return attributesCount; 
-		}
-
-		// ------------------------------------------------------------------
-		// OBJECT ACCESS 
-		// -----------------------------------------------------------------
 		inline const AttributeValue* getObject(unsigned objectIndex) const {
-			assert(objectIndex < objectsCount);
-			return objects + objectIndex * attributesCount;
+			assert(objectIndex < objectsCount); return objects + objectIndex * attributesCount;
 		}
 
-		// ------------------------------------------------------------------
-		// ATTRIBUTE ACCESS 
-		// ------------------------------------------------------------------
+		inline AttributeValue* getObject(unsigned objectIndex) {
+			assert(objectIndex < objectsCount); return objects + objectIndex * attributesCount;
+		}
+
 		inline AttributeValue getAttributeValue(unsigned objectIndex, unsigned attributeIndex) const {
-			assert(attributeIndex < attributesCount);
-			return getObject(objectIndex)[attributeIndex];
+			assert(attributeIndex < attributesCount); return getObject(objectIndex)[attributeIndex];
+		}
+
+		inline unsigned setClass(unsigned objectIndex, unsigned classValue) {
+			assert(objectIndex < objectsCount); return classes[objectIndex] = classValue;
+		}
+
+		inline unsigned getClass(unsigned objectIndex) const {
+			assert(objectIndex < objectsCount); return classes[objectIndex];
 		}
 
 		inline AttributeType getAttributeType(unsigned attributeIndex) const { 
-			assert(attributeIndex < attributesCount);
-			return attributeInfos[attributeIndex].type; 
+			assert(attributeIndex < attributesCount); return attributeInfos[attributeIndex].type; 
+		}
+
+		inline AttributeInfo& getAttributeInfo(unsigned attributeIndex) { 
+			assert(attributeIndex < attributesCount); return attributeInfos[attributeIndex]; 
+		}
+
+		inline const AttributeInfo& getAttributeInfo(unsigned attributeIndex) const { 
+			assert(attributeIndex < attributesCount); return attributeInfos[attributeIndex]; 
 		}
 
 		inline unsigned getNominalAttributeValues(unsigned attributeIndex) const {
-			assert(getAttributeType(attributeIndex) == AttributeNominal);
-			return attributeInfos[attributeIndex].nominalValuesCount; 
+			assert(getAttributeType(attributeIndex) == AttributeNominal); return attributeInfos[attributeIndex].nominalValuesCount; 
 		}
 
-		// ------------------------------------------------------------------
-		// CLASS ACCESS
-		// ------------------------------------------------------------------
-		inline unsigned getClass(unsigned objectIndex) const {
-			assert(objectIndex < objectsCount);
-			return classes[objectIndex].nominal;
+		inline AttributeInfo& getClassInfo() {
+			return classInfo;
+		}
+
+		inline const AttributeInfo& getClassInfo() const {
+			return classInfo;
 		}
 
 		inline unsigned getClassValues() const {
@@ -71,7 +73,7 @@ namespace Data {
 		AttributeInfo classInfo;
 
 		AttributeValue *objects;
-		AttributeValue *classes;
+		unsigned *classes;
 	};
 
 }

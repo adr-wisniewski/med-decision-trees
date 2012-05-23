@@ -8,18 +8,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimplePruning", "SimplePrun
 		{E7630738-26EB-AA58-5510-3DD7A648160D} = {E7630738-26EB-AA58-5510-3DD7A648160D}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AdvancedPruning", "AdvancedPruning\AdvancedPruning.vcxproj", "{6392EFC0-01BA-D167-812C-D36E10E48E7B}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{6392EFC0-01BA-D167-812C-D36E10E48E7B}.Debug|Win32.ActiveCfg = Debug|Win32
-		{6392EFC0-01BA-D167-812C-D36E10E48E7B}.Debug|Win32.Build.0 = Debug|Win32
-		{6392EFC0-01BA-D167-812C-D36E10E48E7B}.Release|Win32.ActiveCfg = Release|Win32
-		{6392EFC0-01BA-D167-812C-D36E10E48E7B}.Release|Win32.Build.0 = Release|Win32
 		{967BAC19-2D55-136B-CE1A-8EB44E9CAB84}.Debug|Win32.ActiveCfg = Debug|Win32
 		{967BAC19-2D55-136B-CE1A-8EB44E9CAB84}.Debug|Win32.Build.0 = Debug|Win32
 		{967BAC19-2D55-136B-CE1A-8EB44E9CAB84}.Release|Win32.ActiveCfg = Release|Win32

@@ -4,28 +4,39 @@
 
 namespace Data {
 
-DataSet::DataSet(unsigned objectsCount, 
-			unsigned attributesCount, 
-			AttributeValue* values, 
-			AttributeValue* classes,
-			AttributeInfo *attributeInfos,
-			AttributeInfo classInfo) : 
-	objectsCount(objectsCount), 
-	attributesCount(attributesCount), 
-	objects(objects), 
-	classes(classes),
-	attributeInfos(attributeInfos),
-	classInfo(classInfo)
+DataSet::DataSet() : 
+	objectsCount(0), 
+	attributesCount(0),
+	objects(nullptr),
+	classes(nullptr),
+	attributeInfos(nullptr)
 {
 	// empty
 }
 
-
 DataSet::~DataSet(void)
+{
+	release();
+}
+
+void DataSet::release()
 {
 	delete [] objects;
 	delete [] classes;
 	delete [] attributeInfos;
+}
+
+void DataSet::allocate(unsigned objectsCount, unsigned attributesCount) {
+	release();
+
+	this->objectsCount = objectsCount;
+	this->attributesCount = attributesCount;
+
+	if( objectsCount > 0 && attributesCount > 0 ) {
+		objects = new AttributeValue[objectsCount*attributesCount];
+		classes = new unsigned[objectsCount];
+		attributeInfos = new AttributeInfo[objectsCount];
+	}
 }
 
 }
