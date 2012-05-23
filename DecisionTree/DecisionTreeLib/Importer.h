@@ -33,7 +33,7 @@ namespace Data {
 		// Delete loaded or generated data
 		void deleteDataSet(void);
 		// convert loaded data into DataSet
-		std::auto_ptr<DataSet> toDataSet();
+		void toDataSet(DataSet &dataset);
 	
 	private:
 		inline float stringToFloat(std::string s);

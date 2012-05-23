@@ -19,10 +19,10 @@ struct SprintBuilder::ContinousAttributeComparator {
 	}	
 };
 
-SprintBuilder::SprintBuilder(const Data::DataSet& data, unsigned minNodeSize, float maxPurity)
-	: data(data), minNodeSize(minNodeSize), maxPurity(maxPurity)
+SprintBuilder::SprintBuilder(unsigned minNodeSize, float minConfidence)
+	: minNodeSize(minNodeSize), minConfidence(minConfidence)
 {
-	// empty
+	assert(minNodeSize > 0);
 }
 
 
@@ -48,7 +48,7 @@ void SprintBuilder::buildRecursive(Node *node) {
 	auto maximum = std::max_element(classesCount.begin(), classesCount.end()); assert(maximum != classesCount.end()); // O(c)
 	unsigned majorityClass = *maximum;
 	node->SetMajorityClass(majorityClass);
-	node->SetPurity(classesCount[majorityClass]/static_cast<float>(node->getTrainingObjects().size()));
+	node->SetConfidence(classesCount[majorityClass]/static_cast<float>(node->getTrainingObjects().size()));
 
 	// check stop condition
 	bool leaf = true;
@@ -99,7 +99,7 @@ bool SprintBuilder::stopCondition(Node *node) {
 	bool stop = false;
 
 	stop = stop || node->getTrainingObjects().size() <= minNodeSize; // min size constraint
-	stop = stop || node->GetPurity() >= maxPurity; // min size constraint
+	stop = stop || node->GetConfidence() >= minConfidence; // min size constraint
 
 	return stop;
 }

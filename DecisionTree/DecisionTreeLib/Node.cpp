@@ -33,6 +33,9 @@ bool NodeTest::Test(const Data::AttributeValue* object) const {
 		return object[attributeIndex].continous >= attributeValues[0].continous;
 	} else if( attributeType == Data::AttributeNominal ) {
 		return std::find(attributeValues.begin(), attributeValues.end(), object[attributeIndex]) != attributeValues.end(); // TODO: this could be optimized if nominal attributes set is stored as bit field
+	} else {
+		assert(false);
+		return false;
 	}
 }
 
