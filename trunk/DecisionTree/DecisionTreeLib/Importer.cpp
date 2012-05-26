@@ -2,6 +2,7 @@
 #include "Importer.h"
 #include <list>
 #include <vector>
+#include <map>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -10,149 +11,196 @@
 
 namespace Data {
 
-int debug = 0;
-int info = 0;
+	int debug = 0;
+	int g_info = 0;
 
-//------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------
 
-Importer::Importer(void)
-{
-	if (debug)
-		std::cout << "Importer::Importer() executed.\n";
-	mainList.clear();
-}
-
-//------------------------------------------------------------------------------
-
-int Importer::loadDataSet(std::string path, dataType dt)
-{
-	if (debug)
-		std::cout << "Importer::loadDataSet() executed.\n";
-
-	std::string line;
-	std::string strValue;
-	int intValue;
-	std::vector<int> intMax;
-	std::vector<int> intAvg;
-	std::vector<int> intMin;
-	std::vector< std::vector<int> > intLimit;
-	/*float floatValue;
-	std::vector<float> floatMax;
-	std::vector<float> floatAvg;
-	std::vector<float> floatMin;
-	std::vector< std::vector<float> > floatLimit;
-	*/
-	std::list<char> instanceList;
-	// attribute index
-	int index;
-	// line loop
-	unsigned long loop;
-
-	// Open file
-	std::ifstream ifs(path.c_str());
-	if ( !ifs.good() ) {
+	Importer::Importer(void)
+	{
 		if (debug)
-			std::cout << "File error.\n";
-		ifs.close();
-		return 1;
+			std::cout << "Importer::Importer() executed.\n";
+		mainList.clear();
+		nominalValuesMap.clear();
+		attrInfoVector.clear();
 	}
 
-	// Clear previous data
-	mainList.clear();
-	
-	if (info)
-		std::cout << "Parsing file, can take a while...";
+	//------------------------------------------------------------------------------
 
-	switch (dt) {
-	case CENSUS :
-		// Read every line of the file
-		while( getline(ifs, line) ) {
-			std::istringstream iss(line);
-			mainList.push_back(instanceList);
+	int Importer::loadDataSet(std::string path, dataType dt)
+	{
+
+		if (debug)
+			std::cout << "Importer::loadDataSet() executed.\n";
+
+		std::string line;
+		std::string strValue;
+		attrValue val;
+
+		AttributeInfo v;
+		std::map<std::string, int> m;
+		int intValue;
+		std::vector<int> intMax;
+		std::vector<int> intAvg;
+		std::vector<int> intMin;
+		//std::vector< std::vector<int> > intLimit;
+
+		std::list<attrValue> instanceList;
+		// attribute index
+		int index;
+		// line loop
+		unsigned long loop;
+
+		// Open file
+		std::ifstream ifs(path.c_str());
+		if ( !ifs.good() ) {
+			if (debug)
+				std::cout << "File error.\n";
+			ifs.close();
+			return 1;
 		}
-		//if (info)
+
+		// Clear previous data
+		mainList.clear();
+		nominalValuesMap.clear();
+		attrInfoVector.clear();
+
+		if (g_info)
+			std::cout << "Parsing file, can take a while...";
+
+		switch (dt) {
+		case CENSUS :
+			// Read every line of the file
+			while( getline(ifs, line) ) {
+				std::istringstream iss(line);
+				mainList.push_back(instanceList);
+			}
+			//if (g_info)
 			std::cout << " not implemented yet!\n";
-		break;
-		//----------------------------------------------------------------------
-	case CONNECT4 :
-		// Read every line of the file
-		while( getline(ifs, line) ) {
-			std::istringstream iss(line);
-			instanceList.clear();
-			index = 0;
-			// Read every value in line
-			while(getline(iss, strValue, ','))
-			{
-				// Last row - category
-				if ( index == 42) {
-					if (strValue == "win")
-						instanceList.push_front(1);
+			break;
+			//----------------------------------------------------------------------
+		case CONNECT4 :
+
+			attrInfoVector.resize(43);
+			nominalValuesMap.resize(43);
+
+			// All 43 nominal attributes
+			for (int i = 0; i < 43; i++) {
+				attrInfoVector[i].nominalValuesCount = 1;
+				attrInfoVector[i].type = AttributeNominal;
+			}
+
+			// Read every line of the file
+			while( getline(ifs, line) ) {
+				std::istringstream iss(line);
+				instanceList.clear();
+
+				index = 0;
+				// Read every value in line
+				while(getline(iss, strValue, ','))
+				{
+					// all atributes are nominal
+					auto iter = nominalValuesMap[index].find(strValue);
+					if (iter != nominalValuesMap[index].end() )
+					{
+						// key 2 exists, do something with iter->second (the value)
+						val.nominalValue = iter->second;
+					}
 					else
-						instanceList.push_front(0);
-				}	
-				else {
-					if (strValue == "x")
-						instanceList.push_back(1);
-					else if (strValue == "o")
-						instanceList.push_back(2);
-					else //(value == "b")
-						instanceList.push_front(3);
+					{
+						// key does not exist
+						attrInfoVector[index].type = AttributeNominal;
+
+						// add value
+						val.nominalValue = attrInfoVector[index].nominalValuesCount;
+						// add to map
+						nominalValuesMap[index][strValue] = val.nominalValue;
+
+						++attrInfoVector[index].nominalValuesCount;
+					}
+					if (index == 42)
+						instanceList.push_front(val);
+					else
+						instanceList.push_back(val);
+
+					++index;
 				}
-				++index;
+				mainList.push_back(instanceList);
+
 			}
-			mainList.push_back(instanceList);
-		}
-		if (info) {
-			std::cout << " done!\n";
-			std::cout << "Attributes legend:\n";
-			std::cout << "  win - 1\n";
-			std::cout << "  draw, loss - 0\n";
-			std::cout << "  x - 1\n";
-			std::cout << "  o - 2\n";
-			std::cout << "  b - 3\n";
-		}
-		break;
-		//----------------------------------------------------------------------
-	case COVERTYPE :
-		// First pass - get max/min values
-		// Reset loops
-		loop = 0;
-		// Read every line of the file
-		while( getline(ifs, line) ) {
-			// attribute index
-			index = 0;
-			// put line to input string stream
-			std::istringstream iss(line);
-			// Read every value in line
-			while(getline(iss, strValue, ','))
+			// put class in first place
+			v = attrInfoVector[42];
+			m = nominalValuesMap[42];
+			for (int i = 42; i > 0; --i) {
+				attrInfoVector[i] = attrInfoVector[i-1];
+				nominalValuesMap[i] = nominalValuesMap[i-1];
+			}
+			nominalValuesMap[0] = m;
+			attrInfoVector[0] = v;
+			
+			if (g_info) {
+				std::cout << " done!\n";
+			}
+			break;
+			//----------------------------------------------------------------------
+
+		case COVERTYPE :
+			// First pass - get max/min values
+			// Reset loops
+			loop = 0;
+
+			attrInfoVector.resize(55);
+			nominalValuesMap.resize(55);
+
+			// cont
+			for (int i = 0; i < 10; i++) {
+				attrInfoVector[i].nominalValuesCount = 1;
+				attrInfoVector[i].type = AttributeContinous;
+			}
+			// last one - class
+			for (int i = 10; i < 55; i++) {
+				attrInfoVector[i].nominalValuesCount = 1;
+				attrInfoVector[i].type = AttributeNominal;
+			}
+
+			// Read every line of the file
+			while( getline(ifs, line) ) {
+				// attribute index
+				index = 0;
+				// put line to input string stream
+				std::istringstream iss(line);
+				// Read every value in line
+				while(getline(iss, strValue, ','))
+				{
+					intValue = stringToInt(strValue);
+					if (index < 10) {
+						// first line - initialize min/max values
+						if (loop == 0) {
+							intMin.push_back(intValue);
+							intMax.push_back(intValue);
+						}
+						else {
+							if (intValue < intMin[index])
+								intMin[index] = intValue;
+							if (intValue > intMax[index])
+								intMax[index] = intValue;
+						}
+					}
+					// Next attribute
+					++index;
+
+				}
+				++loop;
+			} // first pass
+
+			// clear EOF flag
+			ifs.clear();
+			// Set to beginning of file
+			ifs.seekg(0, std::ios::beg);
+
+			// Continuous to discrete
+			/*for (unsigned int idx = 0; idx < intMax.size(); ++idx)
 			{
-				intValue = stringToInt(strValue);
-				// first line - initialize min/max values
-				if (loop == 0) {
-					intMin.push_back(intValue);
-					intMax.push_back(intValue);
-					intLimit.push_back(std::vector<int>(4));
-				}
-				else {
-					if (intValue < intMin[index])
-						intMin[index] = intValue;
-					if (intValue > intMax[index])
-						intMax[index] = intValue;
-				}
-				// Next attribute
-				++index;
-			}
-			++loop;
-		} // first pass
-		
-		// clear EOF flag
-		ifs.clear();
-		// Set to beginning of file
-		ifs.seekg(0, std::ios::beg);
-		
-		// Continuous to discrete
-		for (unsigned int idx = 0; idx < intMax.size(); ++idx)
-		{
 			int dif = (intMax[idx] - intMin[idx])/5;
 			intLimit[idx][0] = intMin[idx] + 1*dif;
 			intLimit[idx][1] = intMin[idx] + 2*dif;
@@ -160,210 +208,265 @@ int Importer::loadDataSet(std::string path, dataType dt)
 			intLimit[idx][3] = intMin[idx] + 4*dif;
 			if (debug)
 			{
-				std::cout << "Min[" << idx << "]: " << intMin[idx] << " ";
-				std::cout << "l0: " << intLimit[idx][0] << " ";
-				std::cout << "l1: " << intLimit[idx][1] << " ";
-				std::cout << "l2: " << intLimit[idx][2] << " ";
-				std::cout << "l3: " << intLimit[idx][3] << " ";
-				std::cout << "Max[" << idx << "]: " << intMax[idx] << std::endl;
+			std::cout << "Min[" << idx << "]: " << intMin[idx] << " ";
+			std::cout << "l0: " << intLimit[idx][0] << " ";
+			std::cout << "l1: " << intLimit[idx][1] << " ";
+			std::cout << "l2: " << intLimit[idx][2] << " ";
+			std::cout << "l3: " << intLimit[idx][3] << " ";
+			std::cout << "Max[" << idx << "]: " << intMax[idx] << std::endl;
 			}
-		}
-		
-		// Second pass - get values to memory
-		// Read every line of the file
-		while( getline(ifs, line) )
-		{
-			std::istringstream iss(line);
-			instanceList.clear();
-			index = 0;
-			// Read every value in line
-			while(getline(iss, strValue, ','))
+			}
+			*/
+			// Second pass - get values to memory
+			// Read every line of the file
+			while( getline(ifs, line) )
 			{
-				intValue = stringToInt(strValue);
-				// Last attribute - category
-				if ( index == 54)
-				{					
-					instanceList.push_front((char)intValue);
-				}
-				else
+				std::istringstream iss(line);
+				instanceList.clear();
+				index = 0;
+
+				// Read every value in line
+				while(getline(iss, strValue, ','))
 				{
-					// Continuous values - need conversion
-					if (index < 10)
-					{
-						if      (intValue <= intLimit[index][0])
-							instanceList.push_back(1);
-						else if (intValue <= intLimit[index][1])
-							instanceList.push_back(2);
-						else if (intValue <= intLimit[index][2])
-							instanceList.push_back(3);
-						else if (intValue <= intLimit[index][3])
-							instanceList.push_back(4);
+					// nominal attributes and category
+					if ( index >= 10 )
+					{	
+						auto iter = nominalValuesMap[index].find(strValue);
+						if (iter != nominalValuesMap[index].end() )
+						{
+							// key exists, do something with iter->second (the value)
+							val.nominalValue = iter->second;
+						}
 						else
-							instanceList.push_back(5);
+						{
+							// key does not exist
+
+							// add value
+							val.nominalValue = attrInfoVector[index].nominalValuesCount;
+							// add to map
+							nominalValuesMap[index][strValue] = val.nominalValue;
+
+							++attrInfoVector[index].nominalValuesCount;
+						}
+
 					}
-					else
+					else // Continuous values
 					{
-						instanceList.push_back(intValue);
+						val.realValue = (float)stringToInt(strValue);
 					}
+
+					if ( index == 54)
+						instanceList.push_front(val);
+					else
+						instanceList.push_back(val);
+
+					++index;
 				}
-				++index;
+				mainList.push_back(instanceList);
+
+			}
+			// put class in first place
+			v = attrInfoVector[53];
+			m = nominalValuesMap[53];
+			for (int i = 53; i > 0; --i) {
+				attrInfoVector[i] = attrInfoVector[i-1];
+				nominalValuesMap[i] = nominalValuesMap[i-1];
+			}
+			nominalValuesMap[0] = m;
+			attrInfoVector[0] = v;
+			if (g_info)
+				std::cout << " done!\n";
+			break;
+			//----------------------------------------------------------------------
+		default :
+			if (debug)
+				std::cout << "Undefined data set type";
+			break;
+
+		} // switch
+
+		ifs.close();
+		return 0;
+	}
+
+	//------------------------------------------------------------------------------
+
+	void Importer::generateRandomData(int exampleCount, int paramCount, float minValue, float maxValue)
+	{
+		if (debug)
+			std::cout << "Importer::generateRandomData() executed.\n";
+
+		std::list<attrValue> instanceList;
+		attrValue val;
+		int i;
+		mainList.clear();
+		nominalValuesMap.clear();
+		attrInfoVector.clear();
+		srand( (unsigned int)time(NULL) );
+		// create info
+
+		attrInfoVector.resize(paramCount+1);
+		nominalValuesMap.resize(paramCount+1);
+		nominalValuesMap[0]["1"] = 1;
+		nominalValuesMap[0]["2"] = 2;
+
+		attrInfoVector[0].type = AttributeNominal;
+		attrInfoVector[0].nominalValuesCount = 3;
+
+		// All real attributes
+		for (int i = 1; i < paramCount+1; ++i) {
+			attrInfoVector[i].type = AttributeContinous;
+		}
+
+		// fill data
+		for (i = 0; i < exampleCount; ++i) {
+			instanceList.clear();
+			// category
+			val.nominalValue = rand()%2 + 1;
+			instanceList.push_front(val);
+			// attributes
+			for (int j = 0; j < paramCount; ++j) {
+				val.realValue = ( (maxValue-minValue) * ((float)rand()/RAND_MAX)) + minValue;
+				//val = (rand() % (maxValue+1 - minValue)) + minValue;
+				instanceList.push_back(val);
 			}
 			mainList.push_back(instanceList);
 		}
-		if (info)
-			std::cout << " done!\n";
-		break;
-		//----------------------------------------------------------------------
-	default :
-		if (debug)
-			std::cout << "Undefined data set type";
-		break;
-
-	} // switch
-	
-	ifs.close();
-	return 0;
-}
-
-//------------------------------------------------------------------------------
-
-void Importer::generateRandomData(int exampleCount, int paramCount, int minValue, int maxValue)
-{
-	if (debug)
-		std::cout << "Importer::generateRandomData() executed.\n";
-	std::list<char> instanceList;
-	int i;
-	int val;
-	mainList.clear();
-	srand( (unsigned int)time(NULL) );
-	for (i = 0; i < exampleCount; ++i) {
-		instanceList.clear();
-		val = rand() % 2;
-		instanceList.push_back(val);
-		for (int j = 0; j < paramCount; ++j) {
-			val = (rand() % (maxValue+1 - minValue)) + minValue;
-			instanceList.push_back(val);
-		}
-		mainList.push_back(instanceList);
+		return;
 	}
-	return;
-}
 
-//------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------
 
-void Importer::showDataSet(int lenght)
-{
-	if (debug)
-		std::cout << "Importer::showDataSet() executed.\n";
-
-	/* std::list< std::list<int> > mainList */
-	std::list< std::list<char> >::iterator mainIt;
-	std::list<char> instanceList;
-	std::list<char>::iterator instanceIt;
-	int i;
-	if (info)
-		std::cout << " [ number : class | attr1, attr2, ... ]\n";
-	std::cout << "{\n";
-	for(i = 0, mainIt = mainList.begin(); mainIt != mainList.end(); ++mainIt, ++i)
+	void Importer::showDataSet(int lenght)
 	{
-		instanceList = *mainIt;
-		std::cout << " [ " << i+1 << ": ";
-		for(instanceIt = instanceList.begin(); instanceIt != instanceList.end(); ++instanceIt)
-		{
-			std::cout << (int)*instanceIt;
+		if (debug)
+			std::cout << "Importer::showDataSet() executed.\n";
 
-			if ( instanceIt == instanceList.begin() ) {
-				std::cout << " | ";
+		/* std::list< std::list<int> > mainList */
+		std::list< std::list<attrValue> >::iterator mainIt;
+
+		std::list<attrValue> instanceList;
+		std::list<attrValue>::iterator instanceIt;
+		int i;
+		int j;
+		if (g_info)
+			std::cout << " [ number : class | attr1, attr2, ... ]\n";
+		std::cout << "{\n";
+		for(i = 0, mainIt = mainList.begin(); mainIt != mainList.end(); ++mainIt, ++i)
+		{
+			instanceList = *mainIt;
+			std::cout << " [ " << i+1 << ": ";
+			for(j = 0, instanceIt = instanceList.begin(); instanceIt != instanceList.end(); ++instanceIt, ++j)
+			{
+				if ( attrInfoVector[j].type == AttributeNominal)
+					std::cout << (*instanceIt).nominalValue;
+				else
+					std::cout << (*instanceIt).realValue;
+
+				if ( instanceIt == instanceList.begin() ) {
+					std::cout << " | ";
+				}
+				else if (++instanceIt == instanceList.end() ) {
+					--instanceIt;
+				}
+				else {
+					std::cout << ", ";
+					--instanceIt;
+				}
 			}
-			else if (++instanceIt == instanceList.end() ) {
-				--instanceIt;
+			if ( lenght > 0 && i >= lenght-1 ) {
+				std::cout << " ]" << std::endl;
+				break;
+			}
+			std::cout << " ]" << std::endl;
+		}
+		std::cout << "}\n";
+		return;
+	}
+
+	//------------------------------------------------------------------------------
+
+	void Importer::deleteDataSet(void)
+	{
+		if (debug)
+			std::cout << "Importer::deleteDataSet() executed.\n";
+		mainList.clear();
+		nominalValuesMap.clear();
+		attrInfoVector.clear();
+		return;
+	}
+
+	//------------------------------------------------------------------------------
+
+	inline float Importer::stringToFloat(std::string s)
+	{
+		std::istringstream iss(s);
+		float f;
+		iss >> f;
+		return f;
+	}
+
+	//------------------------------------------------------------------------------
+
+	inline int Importer::stringToInt(std::string s)
+	{
+		std::istringstream iss(s);
+		int i;
+		iss >> i;
+		return i;
+	}
+
+	//------------------------------------------------------------------------------
+
+	void Importer::toDataSet(DataSet &dataset) {
+
+		unsigned objects = mainList.size();
+		unsigned attributesWithClass = objects > 0 ? mainList.front().size() : 0;
+		unsigned attributes = attributesWithClass > 0 ? attributesWithClass - 1 : 0;
+
+		assert(objects > 0);
+		assert(attributes > 0);
+
+		dataset.allocate(objects, attributes);
+
+		for(unsigned i = 0; i < attributes; ++i) {
+			AttributeInfo &info = dataset.getAttributeInfo(i);
+			// i == 0 in attrInfoVector is class
+			if (attrInfoVector[i+1].type == AttributeContinous) {
+				info.type = AttributeContinous; 
 			}
 			else {
-				std::cout << ", ";
-				--instanceIt;
+				info.type = AttributeNominal;
+				info.nominalValuesCount = attrInfoVector[i].nominalValuesCount;
 			}
 		}
-		if ( lenght > 0 && i >= lenght-1 ) {
-			std::cout << " ]" << std::endl;
-			break;
-		}
-		std::cout << " ]" << std::endl;
-	}
-	std::cout << "}\n";
-	return;
-}
 
-//------------------------------------------------------------------------------
 
-void Importer::deleteDataSet(void)
-{
-	if (debug)
-		std::cout << "Importer::deleteDataSet() executed.\n";
-	mainList.clear();
-	return;
-}
+		AttributeInfo &classInfo = dataset.getClassInfo();
+		classInfo.type = AttributeNominal;
+		classInfo.nominalValuesCount = attrInfoVector[0].nominalValuesCount;
 
-//------------------------------------------------------------------------------
-
-inline float Importer::stringToFloat(std::string s)
-{
-	std::istringstream iss(s);
-	float f;
-	iss >> f;
-	return f;
-}
-
-//------------------------------------------------------------------------------
-
-inline int Importer::stringToInt(std::string s)
-{
-	std::istringstream iss(s);
-	int i;
-	iss >> i;
-	return i;
-}
-
-//------------------------------------------------------------------------------
-
-void Importer::toDataSet(DataSet &dataset) {
-
-	unsigned objects = mainList.size();
-	unsigned attributesWithClass = objects > 0 ? mainList.front().size() : 0;
-	unsigned attributes = attributesWithClass > 0 ? attributesWithClass - 1 : 0;
-
-	assert(objects > 0);
-	assert(attributes > 0);
-
-	dataset.allocate(objects, attributes);
-
-	for(unsigned i = 0; i < attributes; ++i) {
-		AttributeInfo &info = dataset.getAttributeInfo(i);
-		info.type = AttributeNominal; // TODO: FIXME!
-		info.nominalValuesCount = 0; // TODO: FIXME!
-	}
-
-	AttributeInfo &classInfo = dataset.getClassInfo();
-	classInfo.type = AttributeNominal;
-	classInfo.nominalValuesCount = 0; // TODO: FIXME!
-
-	unsigned objectIndex = 0;
-	unsigned attributeIndex = 0;
-	for(auto objectIterator = mainList.begin(), oe = mainList.end(); objectIterator != oe; ++objectIterator, ++objectIndex) {
-		attributeIndex = 0;
-		AttributeValue* object = dataset.getObject(objectIndex);
-		for(auto attributeIterator = objectIterator->begin(), ab = objectIterator->begin(), ae = objectIterator->end(); attributeIterator != ae; ++attributeIterator) {
-			if (attributeIterator == ab ) {
-				// first attribute is class
-				dataset.setClass(objectIndex, *attributeIterator);
-			} else {
-				// other are just attributes
-				object[attributeIndex].nominal = *attributeIterator; // TODO: FIXME!
-				++attributeIndex;
+		unsigned objectIndex = 0;
+		unsigned attributeIndex = 0;
+		// dla kazdego egzemplarza
+		for(auto objectIterator = mainList.begin(), oe = mainList.end(); objectIterator != oe; ++objectIterator, ++objectIndex) {
+			attributeIndex = 0;
+			AttributeValue* object = dataset.getObject(objectIndex);
+			// dla kazdego atrybutu
+			for(auto attributeIterator = objectIterator->begin(), ab = objectIterator->begin(), ae = objectIterator->end(); attributeIterator != ae; ++attributeIterator) {
+				if (attributeIterator == ab ) {
+					// first attribute is class (always nominal)
+					dataset.setClass(objectIndex, (*attributeIterator).nominalValue);
+				} else {
+					// other are just attributes
+					if (attrInfoVector[attributeIndex].type == AttributeContinous)
+						object[attributeIndex].continous = (*attributeIterator).realValue;
+					else
+						object[attributeIndex].nominal = (*attributeIterator).nominalValue;
+					++attributeIndex;
+				}
 			}
 		}
 	}
-}
 
-//------------------------------------------------------------------------------
-
-} // namespace Data
+} //namespace Data
