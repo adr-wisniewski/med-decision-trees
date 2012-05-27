@@ -1,5 +1,6 @@
 #pragma once
 
+#include <assert.h>
 #include "Attribute.h"
 
 namespace Data {
@@ -51,6 +52,8 @@ namespace Data {
 		inline unsigned getNominalAttributeValues(unsigned attributeIndex) const {
 			assert(getAttributeType(attributeIndex) == AttributeNominal); return attributeInfos[attributeIndex].nominalValuesCount; 
 		}
+
+		unsigned getNominalValuesMaximum() const;
 
 		inline AttributeInfo& getClassInfo() {
 			return classInfo;

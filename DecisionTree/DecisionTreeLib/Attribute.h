@@ -20,4 +20,6 @@ namespace Data {
 		AttributeType type;
 		unsigned nominalValuesCount; // number of different nominal values (max+1)
 	};
+
+	extern int STATICASSERT_ATTRIBUTEVALUE_EQUALSIZES[sizeof(AttributeValue().nominal) == sizeof(AttributeValue().continous) ? 1 : -1];
 }

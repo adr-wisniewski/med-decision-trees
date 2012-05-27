@@ -16,9 +16,14 @@ namespace Benchmark {
 
 		inline unsigned getClassesCount() { return classesCount; }
 
+		float getErrorPercentage() const;
+		float getAccuracyPercentage() const;
+
 	private:
 		unsigned *matrix;
 		unsigned classesCount;
+		unsigned samplesTotal;
+		unsigned samplesOk;
 	};
 
 }

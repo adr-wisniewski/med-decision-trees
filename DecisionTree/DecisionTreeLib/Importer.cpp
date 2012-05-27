@@ -11,8 +11,8 @@
 
 namespace Data {
 
-	int debug = 0;
-	int g_info = 0;
+	int debug = 1;
+	int g_info = 1;
 
 	//------------------------------------------------------------------------------
 
@@ -27,7 +27,7 @@ namespace Data {
 
 	//------------------------------------------------------------------------------
 
-	int Importer::loadDataSet(std::string path, dataType dt)
+	int Importer::loadDataSet(const std::string &path, dataType dt)
 	{
 
 		if (debug)

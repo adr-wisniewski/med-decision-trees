@@ -35,8 +35,20 @@ void DataSet::allocate(unsigned objectsCount, unsigned attributesCount) {
 	if( objectsCount > 0 && attributesCount > 0 ) {
 		objects = new AttributeValue[objectsCount*attributesCount];
 		classes = new unsigned[objectsCount];
-		attributeInfos = new AttributeInfo[objectsCount];
+		attributeInfos = new AttributeInfo[attributesCount];
 	}
+}
+
+unsigned DataSet::getNominalValuesMaximum() const {
+	unsigned result = 0;
+
+	for(unsigned a = 0; a < attributesCount; ++a) {
+		if( attributeInfos[a].type == AttributeNominal && attributeInfos[a].nominalValuesCount > result) {
+			result = attributeInfos[a].nominalValuesCount;
+		}
+	}
+
+	return result;
 }
 
 }
