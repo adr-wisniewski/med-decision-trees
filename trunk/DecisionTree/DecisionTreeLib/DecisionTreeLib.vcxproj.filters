@@ -27,9 +27,6 @@
     <ClInclude Include="SprintBuilder.h">
       <Filter>Tree</Filter>
     </ClInclude>
-    <ClInclude Include="DecisionTreeBuilder.h">
-      <Filter>Tree</Filter>
-    </ClInclude>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="Pruner.h">
@@ -47,8 +44,8 @@
     <ClInclude Include="Benchmarker.h">
       <Filter>Benchmark</Filter>
     </ClInclude>
-    <ClInclude Include="SprintBenchmarker.h">
-      <Filter>Benchmark</Filter>
+    <ClInclude Include="Builder.h">
+      <Filter>Tree</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -76,9 +73,6 @@
       <Filter>Benchmark</Filter>
     </ClCompile>
     <ClCompile Include="Benchmarker.cpp">
-      <Filter>Benchmark</Filter>
-    </ClCompile>
-    <ClCompile Include="SprintBenchmarker.cpp">
       <Filter>Benchmark</Filter>
     </ClCompile>
   </ItemGroup>

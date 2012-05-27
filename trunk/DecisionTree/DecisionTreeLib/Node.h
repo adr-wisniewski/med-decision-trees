@@ -9,7 +9,6 @@ namespace Tree {
 	class NodeTest
 	{
 	public:
-		
 		bool Test(const Data::AttributeValue* object) const;
 
 		inline void SetAttributeIndex(unsigned attributeIndex) {this->attributeIndex = attributeIndex;}
@@ -29,15 +28,13 @@ namespace Tree {
 
 	class Node {
 	public:
-		Node(std::vector<unsigned> &trainingObjects);
+		Node(unsigned classValues);
 		~Node();
 
 		unsigned predict(const Data::AttributeValue* object) const;
 		inline bool test(const Data::AttributeValue* object) const { return nodeTest.Test(object); }
 
 		// ACCESS
-		inline const std::vector<unsigned> &getTrainingObjects() const { return trainingObjects; }
-
 		inline void SetMajorityClass(unsigned majorityClass) { this->majorityClass = majorityClass; }
 		inline unsigned GetMajorityClass() const {return majorityClass; }
 
@@ -50,14 +47,21 @@ namespace Tree {
 		inline NodeTest& GetTest() {return nodeTest;}
 		inline const NodeTest& GetTest() const {return nodeTest;}
 
-		inline void setLeftChild(Node *leftChild) {assert(!leftChild); this->leftChild = leftChild; }
-		inline void setRightChild(Node *rightChild) {assert(!rightChild); this->rightChild = rightChild; }
+		inline void setLeftChild(Node *leftChild) {assert(!this->leftChild); this->leftChild = leftChild; }
+		inline void setRightChild(Node *rightChild) {assert(!this->rightChild); this->rightChild = rightChild; }
+
+		inline std::vector<unsigned>& getTrainingObjects() { return trainingObjects; }
+		inline const std::vector<unsigned>& getTrainingObjects() const { return trainingObjects; }
+
+		inline std::vector<unsigned>& getClassesCount() { return classesCounts; }
+		inline const std::vector<unsigned>& getClassesCount() const { return classesCounts; }
 
 	private:
 		Node *leftChild;
 		Node *rightChild;
 		NodeTest nodeTest;
 		std::vector<unsigned> trainingObjects;
+		std::vector<unsigned> classesCounts;
 		unsigned majorityClass;
 		float confidence;
 		bool leaf;

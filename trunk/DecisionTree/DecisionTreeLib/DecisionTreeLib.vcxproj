@@ -73,14 +73,13 @@
   <ItemGroup>
     <ClInclude Include="Attribute.h" />
     <ClInclude Include="Benchmarker.h" />
+    <ClInclude Include="Builder.h" />
     <ClInclude Include="ConfusionMatrix.h" />
     <ClInclude Include="DataSet.h" />
-    <ClInclude Include="DecisionTreeBuilder.h" />
     <ClInclude Include="Importer.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="Pruner.h" />
     <ClInclude Include="Splitter.h" />
-    <ClInclude Include="SprintBenchmarker.h" />
     <ClInclude Include="SprintBuilder.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Tester.h" />
@@ -93,7 +92,6 @@
     <ClCompile Include="Importer.cpp" />
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="Splitter.cpp" />
-    <ClCompile Include="SprintBenchmarker.cpp" />
     <ClCompile Include="SprintBuilder.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

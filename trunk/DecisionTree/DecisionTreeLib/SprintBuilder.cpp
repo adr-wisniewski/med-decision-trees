@@ -4,98 +4,202 @@
 #include "Utils.h"
 #include <algorithm>
 #include <limits>
+#include <set>
 
 namespace Tree {
 
-struct SprintBuilder::NominalAttributeComparator {
-	bool operator() (const AttributeListEntry &left, const AttributeListEntry &right) { 
-		return left.attributeValue.nominal < right.attributeValue.nominal;
-	}	
-};
+//---------------------------------------------------------------------------
+// Helper declarations
+//---------------------------------------------------------------------------
+	struct AttributeListEntry {
+		unsigned objectIndex;
+		Data::AttributeValue attributeValue;
+		unsigned objectClass;
+	};
 
-struct SprintBuilder::ContinousAttributeComparator {
-	bool operator() (const AttributeListEntry &left, const AttributeListEntry &right) { 
-		return left.attributeValue.continous < right.attributeValue.continous;
-	}	
-};
+	struct AttributeList {
+		unsigned attributeIndex;
+		Data::AttributeType type;
+		std::vector<AttributeListEntry> entries;
+	};
 
+	struct GiniIndex {
+		float giniIndex;
+		float giniIn;
+		float giniOut;
+
+		void invalidate() {
+			giniIndex = std::numeric_limits<float>::infinity();
+		}
+
+		bool isValid() const {
+			return giniIndex != std::numeric_limits<float>::infinity();
+		}
+
+		inline bool operator < (const GiniIndex &other) const {
+			return giniIndex < other.giniIndex;
+		}
+
+		inline bool operator == (const GiniIndex &other) const {
+			return giniIndex == other.giniIndex;
+		}
+	};
+
+	struct SplitCandidate {
+		GiniIndex gini;
+		unsigned attributeIndex;
+		std::vector<Data::AttributeValue> attributeValues;
+
+		void swap(SplitCandidate &other) {
+			this->attributeIndex = other.attributeIndex;
+			this->gini = other.gini;
+			this->attributeValues.swap(other.attributeValues);
+		}
+	};
+
+	struct NominalAttributeComparator {
+		bool operator() (const AttributeListEntry &left, const AttributeListEntry &right) { 
+			return left.attributeValue.nominal < right.attributeValue.nominal;
+		}	
+	};
+
+	struct ContinousAttributeComparator {
+		bool operator() (const AttributeListEntry &left, const AttributeListEntry &right) { 
+			return left.attributeValue.continous < right.attributeValue.continous;
+		}	
+	};
+
+	class SprintBuilder::Context {
+
+	public:
+		Context(const Data::DataSet& data) : data(data) {
+			const unsigned classes = data.getClassValues();
+			const unsigned valuesMax = std::max(data.getNominalValuesMaximum(), 1u);
+
+			objectsIn = new unsigned[classes];
+			objectsOut = new unsigned[classes];
+			objectsCount = new unsigned[classes * valuesMax];
+		}
+
+		~Context() {
+			delete [] objectsIn;
+			delete [] objectsOut;
+			delete [] objectsCount;
+		}
+
+		void prepareAttributeLists(std::vector<AttributeList> &litsts);
+		void fillAllObjectsVector(std::vector<unsigned> &vec);
+		void calculateMajorityClass(Node *node);
+		bool findBestSplit(const std::vector<AttributeList> &attributeLists, SplitCandidate &best);
+		void assignTest(Node *node, SplitCandidate &best) const;
+
+		void splitSamples(const Node *node,
+			std::vector<unsigned> &left,
+			std::vector<unsigned> &right);
+
+		void splitAttributeLists(const std::vector<AttributeList> &lists, 
+			std::vector<AttributeList> &listsLeft, 
+			std::vector<AttributeList> &listsRight,
+			const std::vector<unsigned> &samplesLeft,
+			const std::vector<unsigned> &samplesRight);
+
+		void rateContinousSplit(const AttributeList &attributeList, SplitCandidate &candidate);
+		void rateNominalSplit(const AttributeList &attributeList, SplitCandidate &candidate);
+		void rateNominalSplitRecursive(std::vector<Data::AttributeValue> &attributes, 
+			const unsigned classes, 
+			const unsigned values, 
+			const unsigned maxSetSize, 
+			SplitCandidate &candidate);
+
+		void updateHistogram(unsigned nominalValue, unsigned maxValues, unsigned * from, unsigned *to);
+
+		void gini(unsigned objects, 
+			const unsigned *arrIn, 
+			const unsigned *arrOut, 
+			GiniIndex &result) const;
+
+		void resetObjectArrays(unsigned values = 0) {
+			unsigned classes = data.getClassValues();
+			memset(objectsIn, 0, sizeof(unsigned) * classes);
+			memset(objectsOut, 0, sizeof(unsigned) * classes);
+			memset(objectsCount, 0, sizeof(unsigned) * classes * values);
+		}
+
+		const Data::DataSet& data;
+
+	private:
+		// fields used by findBestSplit - here not to allocate and deallocate them in every node
+		unsigned *objectsIn;
+		unsigned *objectsOut;
+		unsigned *objectsCount;
+	};
+
+//---------------------------------------------------------------------------
+// SprintBuilder
+//---------------------------------------------------------------------------
 SprintBuilder::SprintBuilder(unsigned minNodeSize, float minConfidence)
 	: minNodeSize(minNodeSize), minConfidence(minConfidence)
 {
 	assert(minNodeSize > 0);
+	assert(minConfidence >= 0.0f);
+	assert(minConfidence <= 1.0f);
 }
 
+std::auto_ptr<Node> SprintBuilder::build(const Data::DataSet& data) const {
+	Context context(data);
+	std::vector<AttributeList> attributeLists;
+	context.prepareAttributeLists(attributeLists);
 
-std::auto_ptr<Node> SprintBuilder::build() {
-	assert(attributeListStack.size() == 0);
-
-	// build from the root
-	Node *root = new Node(getAllObjectsVector());
-	buildRecursive(root);
-
-	assert(attributeListStack.size() == 0);
-
+	Node *root = new Node(data.getClassValues());
+	context.fillAllObjectsVector(root->getTrainingObjects());
+	buildRecursive(root, attributeLists, context);
 	return std::auto_ptr<Node>(root);
 }
 
-void SprintBuilder::buildRecursive(Node *node) {
-	// calculate majority class
-	std::vector<unsigned> classesCount(data.getClassValues(), 0);
-	for(auto i = node->getTrainingObjects().begin(), e = node->getTrainingObjects().end(); i != e; ++i) { // O(n)
-		classesCount[data.getClass(*i)] += 1;
-	}
+void SprintBuilder::buildRecursive(Node *node, 
+	const std::vector<AttributeList> &attributeLists, 
+	Context &context) const 
+{
+	context.calculateMajorityClass(node);
 
-	auto maximum = std::max_element(classesCount.begin(), classesCount.end()); assert(maximum != classesCount.end()); // O(c)
-	unsigned majorityClass = *maximum;
-	node->SetMajorityClass(majorityClass);
-	node->SetConfidence(classesCount[majorityClass]/static_cast<float>(node->getTrainingObjects().size()));
-
-	// check stop condition
+	// try to split this node
 	bool leaf = true;
 	if (!stopCondition(node)) {
 
-		prepareAttributeListStack(node); // TODO: FIXME
-
 		SplitCandidate split;
-		if(findBestSplit(split)) {
-			assert(split.giniIndex != std::numeric_limits<float>::infinity());
-			NodeTest &test = node->GetTest();
-			test.SetAttributeIndex(split.attributeIndex);
-			test.SetAttributeType(data.getAttributeType(split.attributeIndex));
-			test.GetAttributeValues().swap(split.attributeValues);
+		if(context.findBestSplit(attributeLists, split)) {
+			leaf = false;
+			context.assignTest(node, split);
 			
+			// create nodes
+			Node *left = new Node(context.data.getClassValues());
+			Node *right = new Node(context.data.getClassValues());
+			node->setLeftChild(left);
+			node->setRightChild(right);
 
-			// split training objects
-			std::vector<unsigned> leftObjects;
-			std::vector<unsigned> rightObjects;
-			for(auto o = node->getTrainingObjects().begin(), e = node->getTrainingObjects().end(); o != e; ++o) { // O(n)
-				unsigned object = *o;
-				if(node->test(data.getObject(object))) {
-					rightObjects.push_back(object);
-				} else {
-					leftObjects.push_back(object);
-				}
 
-				// recursive build right
-				Node *right = new Node(rightObjects);
-				buildRecursive(right);
-				node->setRightChild(right);
+			// split samples and attributes
+			context.splitSamples(node, left->getTrainingObjects(), right->getTrainingObjects());
 
-				// recursive build left
-				Node *left = new Node(leftObjects);
-				buildRecursive(left);
-				node->setLeftChild(left);
-			}
+			std::vector<AttributeList> attributeListsLeft;
+			std::vector<AttributeList> attributeListsRight;
+			context.splitAttributeLists(attributeLists, 
+				attributeListsLeft, 
+				attributeListsRight,
+				left->getTrainingObjects(), 
+				right->getTrainingObjects());
+
+			// recursion
+			buildRecursive(left, attributeListsLeft, context);
+			buildRecursive(right, attributeListsRight, context);	
 		}
-
-		// pop current attribute lists from the stack
-		attributeListStack.pop_back(); // TODO: FIXME
 	}
 
 	node->SetLeaf(leaf);
 }
 
-bool SprintBuilder::stopCondition(Node *node) {
+
+bool SprintBuilder::stopCondition(Node *node) const {
 	bool stop = false;
 
 	stop = stop || node->getTrainingObjects().size() <= minNodeSize; // min size constraint
@@ -104,83 +208,111 @@ bool SprintBuilder::stopCondition(Node *node) {
 	return stop;
 }
 
-bool SprintBuilder::findBestSplit(SplitCandidate &best) {
-	assert(attributeListStack.size() > 0);
- 
-	// find best split along all splits
-	best.giniIndex = std::numeric_limits<float>::infinity(); // marker to see if we found any split
+//---------------------------------------------------------------------------
+// Helper implementation
+//---------------------------------------------------------------------------
+void SprintBuilder::Context::prepareAttributeLists(std::vector<AttributeList> &litsts) {
+	unsigned objectsCount = data.getObjectsCount();
+	unsigned attributesCount = data.getAttributesCount();
+	litsts.resize(attributesCount);
 
-	// split if on one of remaining attributes
-	if(attributeListStack.size() > 0 ) {
-		SplitCandidate current;
-		auto litsts = attributeListStack.back();
-		for(auto i = litsts.begin(), e = litsts.end(); i != e; ++i) {
-			if (i->type == Data::AttributeNominal ) {
-				rateNominalSplit(*i, current); // TODO: fix case with single attribute remaining
-			} else if (i->type == Data::AttributeContinous ) {
-				rateContinousSplit(*i, current); // TODO: fix case with single attribute remaining
-			} else {
-				assert(false);
-			}
+	for(unsigned a = 0; a < attributesCount; ++a) {
+		AttributeList &list = litsts[a];
+		list.attributeIndex = a;
+		list.type = data.getAttributeType(a);
+		list.entries.resize(objectsCount);
 
-			if (current.giniIndex != std::numeric_limits<float>::infinity() && current.giniIndex < best.giniIndex) {
-				best.swap(current);
-			}
+		// initialize value list for all objects
+		for(unsigned o = 0; o < objectsCount; ++o) {
+			AttributeListEntry &entry = list.entries[o];
+			entry.objectIndex = o;
+			entry.attributeValue = data.getAttributeValue(o, a);
+			entry.objectClass = data.getClass(o);
+		}
+
+		// sort list
+		if( list.type == Data::AttributeNominal ) {
+			std::sort(list.entries.begin(), list.entries.end(), NominalAttributeComparator()); // TODO: do we really need lists for nomial attributes?
+		} else if(list.type == Data::AttributeContinous) {
+			std::sort(list.entries.begin(), list.entries.end(), ContinousAttributeComparator());
+		} else {
+			assert(false);
 		}
 	}
-
-	// return true if we found any split
-	return best.giniIndex != std::numeric_limits<float>::infinity();
 }
 
-void SprintBuilder::rateContinousSplit(const AttributeList &attributeList, SplitCandidate &candidate) {
+void SprintBuilder::Context::fillAllObjectsVector(std::vector<unsigned> &vec) {
+	unsigned objectsCount = data.getObjectsCount();
+	vec.resize(objectsCount);
+
+	for(unsigned i = 0; i < objectsCount; ++i) {
+		vec[i] = i;
+	}
+}
+
+void SprintBuilder::Context::calculateMajorityClass(Node *node) {
+	std::vector<unsigned> &classesCount = node->getClassesCount();
+	for(auto i = node->getTrainingObjects().begin(), e = node->getTrainingObjects().end(); i != e; ++i) { // O(n)
+		classesCount[data.getClass(*i)] += 1;
+	}
+
+	auto maximum = std::max_element(classesCount.begin(), classesCount.end()); assert(maximum != classesCount.end());
+	unsigned majorityClass = maximum - classesCount.begin();
+	node->SetMajorityClass(majorityClass);
+	node->SetConfidence(classesCount[majorityClass]/static_cast<float>(node->getTrainingObjects().size()));
+}
+
+bool SprintBuilder::Context::findBestSplit(const std::vector<AttributeList> &litsts, SplitCandidate &best) {
+	// find best split along all splits
+	best.gini.invalidate();
+
+	// split if on one of remaining attributes
+	SplitCandidate current;
+	for(auto i = litsts.begin(), e = litsts.end(); i != e; ++i) {
+		current.attributeIndex = i->attributeIndex;
+		current.gini.invalidate();
+
+		if (i->type == Data::AttributeNominal ) {
+			rateNominalSplit(*i, current); // TODO: fix case with single attribute remaining
+		} else if (i->type == Data::AttributeContinous ) {
+			rateContinousSplit(*i, current); // TODO: fix case with single attribute remaining
+		} else {
+			assert(false);
+		}
+
+		if (current.gini.isValid() && current.gini < best.gini) {
+			best.swap(current);
+		}
+	}
+	
+	// return true if we found any split
+	return best.gini.isValid();
+}
+
+void SprintBuilder::Context::rateContinousSplit(const AttributeList &attributeList, SplitCandidate &candidate) {
 	assert(attributeList.type == Data::AttributeContinous);
 	assert(attributeList.entries.size() > 0);
 
-	unsigned classes = data.getClassValues();
-	unsigned *below = new unsigned[classes]; // TODO: should have been boost::scoped_array
-	unsigned *above = new unsigned[classes];
-
 	// calculate histogram
-	memset(below, 0, sizeof(unsigned) * classes);
-	memset(above, 0, sizeof(unsigned) * classes);
+	resetObjectArrays();
 	for(auto i = attributeList.entries.begin(), e = attributeList.entries.end(); i != e; ++i) {
-		above[i->objectClass] += 1;
+		objectsCount[i->objectClass] += 1;
 	}
 
 	// calculate splits
-	candidate.attributeIndex = attributeList.attributeIndex;
-	candidate.giniIndex = std::numeric_limits<float>::infinity();
 	candidate.attributeValues.resize(1);
 	float lastValue = attributeList.entries.begin()->attributeValue.continous;
 	for(auto i = attributeList.entries.begin(), e = attributeList.entries.end(); i != e; ++i) {
 		if ( !Utils::epsilonEqual(i->attributeValue.continous, lastValue) ) {
-			// split found - calculate gini index
-			float objectsAbove = 0;
-			float objectsBelow = 0;
-			for(unsigned c = 0; c < classes; ++c) {
-				objectsAbove += above[c];
-				objectsBelow += below[c];
-			}
-
-			assert(objectsAbove > 0);
-			assert(objectsBelow > 0);
-			float giniAbove = 1;
-			float giniBelow = 1;
-			for(unsigned c = 0; c < classes; ++c) {
-				float a = above[c] / objectsAbove;
-				float b = below[c] / objectsBelow;
-				giniAbove -= a * a;
-				giniBelow -= b * b;
-			}
-
-			float objectsAll = objectsAbove + objectsBelow; assert(objectsAll > 0);
-			float giniSplit =  (objectsAbove / objectsAll) * giniAbove + (objectsBelow / objectsAll) * giniBelow;
+			// calculate gini
+			GiniIndex giniIndex;
+			gini(data.getClassValues(), objectsIn, objectsOut, giniIndex);
 
 			// pick better split
-			if( giniSplit < candidate.giniIndex ) {
-				candidate.giniIndex = giniSplit;
-				candidate.attributeValues[0].continous = lastValue;
+			assert(giniIndex.isValid()); // we always should have some values above and below
+			if( giniIndex < candidate.gini ) {
+				candidate.gini = giniIndex;
+				candidate.attributeValues[0].continous = (lastValue + i->attributeValue.continous)/2.0f;
 			}
 
 			// switch to next value
@@ -188,48 +320,34 @@ void SprintBuilder::rateContinousSplit(const AttributeList &attributeList, Split
 		}
 
 		// update histogram
-		assert(above[i->objectClass] >= 1);
-		above[i->objectClass] -= 1; 
-		below[i->objectClass] += 1;
+		assert(objectsOut[i->objectClass] >= 1);
+		objectsOut[i->objectClass] -= 1; 
+		objectsIn[i->objectClass] += 1;
 	}
-
-	delete [] below;
-	delete [] above;
 }
 
-void SprintBuilder::rateNominalSplit(const AttributeList &attributeList, SplitCandidate &candidate) {
+void SprintBuilder::Context::rateNominalSplit(const AttributeList &attributeList, SplitCandidate &candidate) {
 	assert(attributeList.type == Data::AttributeNominal);
 	assert(attributeList.entries.size() > 0);
 
 	// calculate count matrix
 	const unsigned classes = data.getClassValues();
 	const unsigned values = data.getNominalAttributeValues(attributeList.attributeIndex);
-	unsigned *counts = new unsigned[classes * values];
-	unsigned *objectsIn = new unsigned[classes]; 
-	unsigned *objectsOut = new unsigned[classes]; 
-	memset(counts, 0, sizeof(unsigned) * classes * values);
-	memset(objectsIn, 0, sizeof(unsigned) * classes);
-	memset(objectsOut, 0, sizeof(unsigned) * classes);
+	resetObjectArrays(values);
 	for(auto i = attributeList.entries.begin(), e = attributeList.entries.end(); i != e; ++i) {
-		counts[i->objectClass * classes + i->attributeValue.nominal] += 1;
+		objectsCount[i->objectClass * values + i->attributeValue.nominal] += 1;
 		objectsOut[i->objectClass] += 1;
 	}
 
+	// rate each subset recursively (1 element sets, 2 element sets and so on)
 	const unsigned maxSetSize = values / 2; // prof Kryszkiewicz optimization
 	std::vector<Data::AttributeValue> attributes;
 	attributes.reserve(maxSetSize);
-
-	candidate.giniIndex = std::numeric_limits<float>::infinity();
-	candidate.attributeIndex = attributeList.attributeIndex;
-	rateNominalSplitRecursive(attributes, counts, objectsIn, objectsOut, classes, values, maxSetSize, candidate);
-
-	delete [] counts;
+	rateNominalSplitRecursive(attributes, classes, values, maxSetSize, candidate);
 }
 
-void SprintBuilder::rateNominalSplitRecursive(std::vector<Data::AttributeValue> &attributes, 
-											  const unsigned *counts, 
-											  unsigned *objectsIn, 
-											  unsigned *objectsOut, 
+// TODO: this checks all attribute values subsets without checking if they really exist in data
+void SprintBuilder::Context::rateNominalSplitRecursive(std::vector<Data::AttributeValue> &attributes,
 											  const unsigned classes, 
 											  const unsigned values, 
 											  const unsigned maxSetSize, 
@@ -241,114 +359,142 @@ void SprintBuilder::rateNominalSplitRecursive(std::vector<Data::AttributeValue> 
 
 	// add next attribute to set
 	Data::AttributeValue nextValue;
-	nextValue.nominal = 0;
-	if (attributes.size() > 0) {
-		nextValue.nominal = attributes.back().nominal + 1;
-	} 
+	nextValue.nominal = attributes.size() > 0 ? attributes.back().nominal + 1 : 0;
 	attributes.push_back(nextValue);
 
 	while( attributes.back().nominal < values ) {
-
 		// update histograms
-		float allIn = 0;
-		float allOut = 0;
-		for(unsigned c = 0; c < classes; ++c) {
-			unsigned delta = counts[c*classes + attributes.back().nominal];
-			assert(objectsOut[c] >= delta);
-			objectsIn[c] += delta;
-			objectsOut[c] -= delta;
+		updateHistogram(attributes.back().nominal, values, objectsOut, objectsIn);
 
-			allIn += objectsIn[c];
-			allOut += objectsOut[c];
+		GiniIndex index;
+		gini(classes, objectsIn, objectsOut, index);
+
+		if(index.isValid()) {
+			if(index < candidate.gini || index == candidate.gini && attributes.size() < candidate.attributeValues.size()) {
+				candidate.gini = index;
+				candidate.attributeValues = attributes;
+			}
+
+			// extend set further
+			rateNominalSplitRecursive(attributes, classes, values, maxSetSize, candidate);
 		}
-
-		assert(allIn > 0);
-		assert(allOut > 0);
-
-		float giniIn = 1;
-		float giniOut = 1;
-		for(unsigned c = 0; c < classes; ++c) {
-			float i = objectsIn[c] / allIn;
-			float o = objectsOut[c] / allOut;
-			giniIn -= i*i;
-			giniOut -= o*o;
-		}
-
-		float all = allIn + allOut; assert(all > 0);
-		float giniSplit =  (allIn / all) * giniIn + (allOut / all) * giniOut;
-
-		if(giniSplit < candidate.giniIndex) {
-			candidate.giniIndex = giniSplit;
-			candidate.attributeValues = attributes;
-		}
-
-		// extend set further
-		rateNominalSplitRecursive(attributes, counts, objectsIn, objectsOut, classes, values, maxSetSize, candidate);
 		
 		// revert histograms and increment current attribute
-		for(unsigned c = 0; c < classes; ++c) {
-			unsigned delta = counts[c*classes + attributes.back().nominal];
-			assert(objectsIn[c] >= delta);
-			objectsIn[c] -= delta;
-			objectsOut[c] += delta;
-		}
-
+		updateHistogram(attributes.back().nominal, values, objectsIn, objectsOut);
 		attributes.back().nominal += 1;
 	}
 
 	attributes.pop_back();
 }
 
-void SprintBuilder::prepareAttributeListStack(Node *node) {
-	unsigned objectsCount = node->getTrainingObjects().size();
-	unsigned attributesCount = data.getAttributesCount();
+void SprintBuilder::Context::updateHistogram(unsigned nominalValue, unsigned maxValues, unsigned * from, unsigned *to) {
+	// transfer objects of value [nominalValue] between ObjectsIn and ObjectsOut 
+	for(unsigned c = 0; c < data.getClassValues(); ++c) {
+		unsigned delta = objectsCount[c*maxValues + nominalValue];
+		assert(from[c] >= delta);
+		from[c] -= delta;
+		to[c] += delta;
+	}	
+}
 
-	// create new level
-	attributeListStack.push_back(std::vector<AttributeList>());
-	auto litsts = attributeListStack.back();
-	litsts.resize(attributesCount);
+void SprintBuilder::Context::assignTest(Node *node, SplitCandidate &split) const {
+	assert(split.gini.isValid());
+	NodeTest &test = node->GetTest();
+	test.SetAttributeIndex(split.attributeIndex);
+	test.SetAttributeType(data.getAttributeType(split.attributeIndex));
+	test.GetAttributeValues().swap(split.attributeValues);	
+}
 
-	for(unsigned a = 0; a < attributesCount; ++a) {
-		AttributeList &list = litsts[a];
-		list.attributeIndex = a;
-		list.type = data.getAttributeType(a);
-		list.entries.resize(objectsCount);
+void SprintBuilder::Context::splitSamples(const Node *node,
+	std::vector<unsigned> &left,
+	std::vector<unsigned> &right) {
 
-		// initialize value list for all objects
-		for(unsigned o = 0; o < objectsCount; ++o) {
-			unsigned object = node->getTrainingObjects()[o];
-			AttributeListEntry &entry = list.entries[o];
-			entry.objectIndex = o;
-			entry.attributeValue = data.getAttributeValue(object, a);
-			entry.objectClass = data.getClass(object);
-		}
+	const std::vector<unsigned> &samples = node->getTrainingObjects();
+	unsigned samplesCount = samples.size();
 
-		// sort list
-		if( list.type == Data::AttributeNominal ) {
-			std::sort(list.entries.begin(), list.entries.end(), NominalAttributeComparator());
-		} else if(list.type == Data::AttributeContinous) {
-			std::sort(list.entries.begin(), list.entries.end(), ContinousAttributeComparator());
+	left.reserve(samplesCount);
+	right.reserve(samplesCount);
+
+	for(auto o = samples.begin(), e = samples.end(); o != e; ++o) { // O(n)
+		unsigned object = *o;
+		if(node->test(data.getObject(object))) {
+			left.push_back(object);
 		} else {
-			assert(false);
+			right.push_back(object);
 		}
 	}
 }
 
-std::vector<unsigned> SprintBuilder::getAllObjectsVector() const {
-	unsigned objectsCount = data.getObjectsCount();
-	std::vector<unsigned> result(objectsCount);
+void SprintBuilder::Context::splitAttributeLists(const std::vector<AttributeList> &lists, 
+	std::vector<AttributeList> &listsLeft, 
+	std::vector<AttributeList> &listsRight,
+	const std::vector<unsigned> &samplesLeft,
+	const std::vector<unsigned> &samplesRight) {
 
-	for(unsigned i = 0; i < objectsCount; ++i) {
-		result[i] = i;
+	std::set<unsigned> leftSamples; // this could be a hash set
+	for(auto s = samplesLeft.begin(), e = samplesLeft.end(); s != e; ++s) {
+		leftSamples.insert(*s); // PERFORMANCE: copying (think how to do it faster)
 	}
 
-	return result;
+	unsigned leftSamplesCount = leftSamples.size();
+	unsigned rightSamplesCount = samplesRight.size();
+
+	// split lists
+	unsigned listsCount = lists.size();
+	listsLeft.resize(listsCount);
+	listsRight.resize(listsCount);
+	for(unsigned l = 0; l < listsCount; ++l) {
+		const AttributeList& list = lists[l];
+		AttributeList& left = listsLeft[l];
+		AttributeList& right = listsRight[l];
+
+		// copy metadata
+		left.attributeIndex = right.attributeIndex = list.attributeIndex;
+		left.type = right.type = list.type;
+		left.entries.reserve(leftSamplesCount);
+		right.entries.reserve(rightSamplesCount);
+
+		// split data
+		for(auto i = list.entries.begin(), e = list.entries.end(); i != e; ++i) {
+			if(leftSamples.find(i->objectIndex) != leftSamples.end()) {
+				left.entries.push_back(*i);
+			} else {
+				right.entries.push_back(*i);
+			}
+		}
+
+		assert(left.entries.size() == leftSamplesCount);
+		assert(right.entries.size() == rightSamplesCount);
+	}
+
+	assert(listsLeft.size() == listsCount);
+	assert(listsRight.size() == listsCount);
 }
 
-void SprintBuilder::SplitCandidate::swap(SplitCandidate &other) {
-	this->attributeIndex = other.attributeIndex;
-	this->giniIndex = other.giniIndex;
-	this->attributeValues.swap(other.attributeValues);
+void SprintBuilder::Context::gini(unsigned objects, const unsigned *arrIn, const unsigned *arrOut, GiniIndex &result) const {
+	result.giniIn = 1.0f;
+	result.giniOut = 1.0f;
+
+	unsigned objectsIn = 0;
+	unsigned objectsOut = 0;
+	for(unsigned o = 0; o < objects; ++o) {
+		objectsIn += arrIn[o];
+		objectsOut += arrOut[o];
+	}
+
+	if(objectsIn > 0 && objectsOut > 0) {
+		for(unsigned o = 0; o < objects; ++o) {
+			float fractionIn = arrIn[o] / static_cast<float>(objectsIn);
+			float fractionOut = arrOut[o] / static_cast<float>(objectsOut);
+			result.giniIn -= fractionIn * fractionIn;
+			result.giniOut -= fractionOut * fractionOut;
+		}
+
+		float objectsAll = static_cast<float>(objectsIn + objectsOut); assert(objectsAll > 0);
+		result.giniIndex =  (objectsIn / objectsAll) * result.giniIn + (objectsOut / objectsAll) * result.giniOut;
+	} else {
+		result.invalidate();
+	}
 }
 
 }

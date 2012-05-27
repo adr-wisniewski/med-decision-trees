@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Splitter.h"
 #include "DataSet.h"
+#include <algorithm>
 
 namespace Data {
 
@@ -22,7 +23,12 @@ void Splitter::split(float quantity, const DataSet &source, DataSet &splitted, D
 	unsigned attributeCount = source.getAttributesCount();
 
 	unsigned splittedCount = static_cast<unsigned>(objectsCount * quantity);
+	splittedCount = std::max(1u, splittedCount);
+	splittedCount = std::min(objectsCount - 1, splittedCount);
 	unsigned restCount = objectsCount - splittedCount;
+
+	assert(splittedCount > 0);
+	assert(restCount > 0);
 
 	splitted.allocate(splittedCount, attributeCount);
 	rest.allocate(restCount, attributeCount);
@@ -45,11 +51,15 @@ void Splitter::split(float quantity, const DataSet &source, DataSet &splitted, D
 
 	// copy data
 	for (unsigned i = 0; i < splittedCount; ++i) {
-		memcpy(splitted.getObject(i), source.getObject(randomPermutation[i]), attributeCount * sizeof(AttributeValue));
+		unsigned sourceObject = randomPermutation[i];
+		memcpy(splitted.getObject(i), source.getObject(sourceObject), attributeCount * sizeof(AttributeValue));
+		splitted.setClass(i, source.getClass(sourceObject));
 	}
 
 	for (unsigned i = 0; i < restCount; ++i) {
-		memcpy(rest.getObject(i), source.getObject(randomPermutation[splittedCount+i]), attributeCount * sizeof(AttributeValue));
+		unsigned sourceObject = randomPermutation[splittedCount+i];
+		memcpy(rest.getObject(i), source.getObject(sourceObject), attributeCount * sizeof(AttributeValue));
+		rest.setClass(i, source.getClass(sourceObject));
 	}
 
 	// clean up

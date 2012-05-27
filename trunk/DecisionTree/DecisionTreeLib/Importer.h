@@ -1,7 +1,6 @@
 #pragma once
 
 #include <list>
-#include <string>
 #include <map>
 #include <vector>
 #include "Attribute.h"
@@ -39,7 +38,7 @@ public:
 	// Main constructor, do nothing particular
 	Importer(void);
 	// Load data from CSV file passed by arg, returns < 0 on error
-	int loadDataSet(std::string path, dataType dt);
+	int loadDataSet(const std::string &path, dataType dt);
 	// Generate simple random data (uniform distribution)
 	void generateRandomData(int exampleCount, int paramCount, float minValue, float maxValue);
 	// Print loaded or generated data on stdout

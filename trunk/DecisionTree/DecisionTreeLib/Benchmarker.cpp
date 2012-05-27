@@ -4,6 +4,7 @@
 #include "DataSet.h"
 #include "Importer.h"
 #include "SprintBuilder.h"
+#include "Pruner.h"
 #include "Splitter.h"
 #include "Tester.h"
 
@@ -14,7 +15,7 @@ namespace {
 
 namespace Benchmark {
 
-Benchmarker::Benchmarker(void) 
+Benchmarker::Benchmarker() 
 	: testSetRatio(DefaultTestSetRatio), 
 	pruningSetRatio(DefaultPruningSetRatio),
 	tree(nullptr),
@@ -28,33 +29,37 @@ Benchmarker::~Benchmarker(void) {
 	delete prunedTree;
 }
 
-void Benchmarker::run(const std::string &datasetName, 
-	Tree::DecisionTreeBuilder *builder,
-	Tree::Pruner *pruner) 
+// this code was not put into costructor deliberatly because builder could throw exceptions
+bool Benchmarker::initialize(const std::string &datasetName, Data::Importer::dataType dataType, const Tree::Builder &builder) 
 {
-	delete tree;
-	delete prunedTree;
+	assert(!tree);
 
 	Data::DataSet data;
 	Data::DataSet buildingData;
-	Data::DataSet trainingData;
-	Data::DataSet testData;
-	Data::DataSet pruningData;
 
 	Data::Importer importer;
-	importer.loadDataSet(datasetName, Data::Importer::CENSUS); // TODO: fix this
+	if(importer.loadDataSet(datasetName, dataType)) { // TODO: fix this
+		return false;
+	}
+
 	importer.toDataSet(data);	
 
 	Data::Splitter splitter;
 	splitter.split(testSetRatio, data, testData, buildingData);
 	splitter.split(pruningSetRatio, buildingData, pruningData, trainingData);
 
-	// TODO: finish
-	//builder.build(trainingData, tree);
-	//pruner.prune(pruningData, tree, prunedTree);
-
-	Tester tester;
+	tree = builder.build(trainingData).release();
 	tester.test(tree, testData, treeErrors);
+
+	assert(tree);
+	return true;
+}
+
+void Benchmarker::run(const Tree::Pruner &pruner) 
+{
+	delete prunedTree;
+
+	prunedTree = pruner.prune(*tree, pruningData, trainingData).release();
 	tester.test(prunedTree, testData, prunedTreeErrors);
 }
 
