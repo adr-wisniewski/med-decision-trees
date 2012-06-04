@@ -79,6 +79,7 @@
     <ClInclude Include="Importer.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="Pruner.h" />
+    <ClInclude Include="RepPruner.h" />
     <ClInclude Include="Splitter.h" />
     <ClInclude Include="SprintBuilder.h" />
     <ClInclude Include="stdafx.h" />
@@ -91,6 +92,8 @@
     <ClCompile Include="DataSet.cpp" />
     <ClCompile Include="Importer.cpp" />
     <ClCompile Include="Node.cpp" />
+    <ClCompile Include="Pruner.cpp" />
+    <ClCompile Include="RepPruner.cpp" />
     <ClCompile Include="Splitter.cpp" />
     <ClCompile Include="SprintBuilder.cpp" />
     <ClCompile Include="stdafx.cpp">

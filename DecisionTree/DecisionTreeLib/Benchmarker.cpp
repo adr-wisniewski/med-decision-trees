@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "Benchmarker.h"
 
+#include <iostream>
+
 #include "DataSet.h"
 #include "Importer.h"
 #include "SprintBuilder.h"
@@ -37,6 +39,7 @@ bool Benchmarker::initialize(const std::string &datasetName, Data::Importer::dat
 	Data::DataSet data;
 	Data::DataSet buildingData;
 
+	std::cout << "\tImporting data" << std::endl;
 	Data::Importer importer;
 	if(importer.loadDataSet(datasetName, dataType)) { // TODO: fix this
 		return false;
@@ -44,10 +47,12 @@ bool Benchmarker::initialize(const std::string &datasetName, Data::Importer::dat
 
 	importer.toDataSet(data);	
 
+	std::cout << "\tSplitting data" << std::endl;
 	Data::Splitter splitter;
 	splitter.split(testSetRatio, data, testData, buildingData);
 	splitter.split(pruningSetRatio, buildingData, pruningData, trainingData);
 
+	std::cout << "\tBuilding tree" << std::endl;
 	tree = builder.build(trainingData).release();
 	tester.test(tree, testData, treeErrors);
 
@@ -59,8 +64,11 @@ void Benchmarker::run(const Tree::Pruner &pruner)
 {
 	delete prunedTree;
 
-	prunedTree = pruner.prune(*tree, pruningData, trainingData).release();
-	tester.test(prunedTree, testData, prunedTreeErrors);
+	Tree::Node *treeClone = tree->clone().release();
+	pruner.prune(*treeClone, pruningData, trainingData);
+	tester.test(treeClone, testData, prunedTreeErrors);
+
+	prunedTree = treeClone;
 }
 
 }

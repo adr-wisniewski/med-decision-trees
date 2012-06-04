@@ -34,6 +34,9 @@ namespace Tree {
 		unsigned predict(const Data::AttributeValue* object) const;
 		inline bool test(const Data::AttributeValue* object) const { return nodeTest.Test(object); }
 
+		// CLONING
+		std::auto_ptr<Node> clone() const;
+
 		// ACCESS
 		inline void SetMajorityClass(unsigned majorityClass) { this->majorityClass = majorityClass; }
 		inline unsigned GetMajorityClass() const {return majorityClass; }
@@ -47,14 +50,23 @@ namespace Tree {
 		inline NodeTest& GetTest() {return nodeTest;}
 		inline const NodeTest& GetTest() const {return nodeTest;}
 
-		inline void setLeftChild(Node *leftChild) {assert(!this->leftChild); this->leftChild = leftChild; }
-		inline void setRightChild(Node *rightChild) {assert(!this->rightChild); this->rightChild = rightChild; }
+		inline void setLeftChild(Node *leftChild) {this->leftChild = leftChild; }
+		inline Node* getLeftChild() const { return leftChild; }
+		inline Node* &getLeftChildPtrRef() { return leftChild; }
+
+		inline void setRightChild(Node *rightChild) {this->rightChild = rightChild; }
+		inline Node* getRightChild() const { return rightChild; }
+		inline Node* &getRightChildPtrRef() { return rightChild; }
 
 		inline std::vector<unsigned>& getTrainingObjects() { return trainingObjects; }
 		inline const std::vector<unsigned>& getTrainingObjects() const { return trainingObjects; }
 
 		inline std::vector<unsigned>& getClassesCount() { return classesCounts; }
 		inline const std::vector<unsigned>& getClassesCount() const { return classesCounts; }
+
+		inline unsigned getNodesCount() const { return nodesCount; }
+		inline unsigned getLeavesCount() const { return leavesCount; }
+		void updateNodesCount();
 
 	private:
 		Node *leftChild;
@@ -65,6 +77,8 @@ namespace Tree {
 		unsigned majorityClass;
 		float confidence;
 		bool leaf;
+		unsigned nodesCount;
+		unsigned leavesCount;
 	};
 
 }
