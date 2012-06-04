@@ -8,6 +8,7 @@
 #include "SprintBuilder.h"
 #include "Pruner.h"
 #include "RepPruner.h"
+#include "MepPruner.h"
 
 using namespace Data;
 using namespace Tree;
@@ -23,8 +24,9 @@ namespace {
 	Data::Importer::dataType dataType = Data::Importer::CONNECT4;
 
 	Pruner* pruners [] = {
-		new RepPruner("RepPruner01"),
-		//new MepPruner("MepPruner01"),
+		new RepPruner("RepPruner01", false),
+		new RepPruner("RepPruner02", true),
+		new MepPruner("MepPruner01"),
 		//new IrepPruner(),
 	};
 }
