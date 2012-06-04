@@ -78,6 +78,7 @@
     <ClInclude Include="DataSet.h" />
     <ClInclude Include="Importer.h" />
     <ClInclude Include="MepPruner.h" />
+    <ClInclude Include="Metrics.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="Pruner.h" />
     <ClInclude Include="RepPruner.h" />
@@ -93,6 +94,7 @@
     <ClCompile Include="DataSet.cpp" />
     <ClCompile Include="Importer.cpp" />
     <ClCompile Include="MepPruner.cpp" />
+    <ClCompile Include="Metrics.cpp" />
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="Pruner.cpp" />
     <ClCompile Include="RepPruner.cpp" />

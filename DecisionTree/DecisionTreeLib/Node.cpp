@@ -4,9 +4,9 @@
 
 namespace Tree {
 
-Node::Node(unsigned classValues) 
+Node::Node(unsigned classValues, unsigned ruleLength) 
 	: leftChild(nullptr), rightChild(nullptr), 
-	classesCounts(classValues, 0), nodesCount(0), leavesCount(0)
+	classesCounts(classValues, 0), nodesCount(0), leavesCount(0), height(0), ruleLength(ruleLength)
 {
 	
 }
@@ -17,13 +17,14 @@ Node::~Node() {
 }
 
 std::auto_ptr<Node> Node::clone() const {
-	Node *result = new Node(classesCounts.size());
+	Node *result = new Node(classesCounts.size(), ruleLength);
 	result->nodeTest = nodeTest;
 	result->majorityClass = majorityClass;
 	result->confidence = confidence;
 	result->leaf = leaf;
 	result->nodesCount = nodesCount;
 	result->leavesCount = leavesCount;
+	result->height = height;
 
 	result->trainingObjects.resize(trainingObjects.size());
 	result->classesCounts.resize(classesCounts.size());
@@ -38,23 +39,27 @@ std::auto_ptr<Node> Node::clone() const {
 	return std::auto_ptr<Node>(result);
 }
 
-unsigned Node::predict(const Data::AttributeValue* object) const {
+unsigned Node::predict(const Data::AttributeValue* object, unsigned *outRuleLength) const {
 	if(leaf) {
+		if(outRuleLength) {
+			*outRuleLength = ruleLength;
+		}
 		return majorityClass;
 	}
 
 	assert(rightChild);
 	assert(leftChild);
 	if(test(object)) {
-		return leftChild->predict(object);
+		return leftChild->predict(object, outRuleLength);
 	} else {
-		return rightChild->predict(object);
+		return rightChild->predict(object, outRuleLength);
 	}
 }
 
 void Node::updateNodesCount() {
 	nodesCount = 0;
 	leavesCount = 0;
+	height = 1;
 
 	if(leaf) {
 		++leavesCount;
@@ -65,11 +70,13 @@ void Node::updateNodesCount() {
 	if(leftChild) {
 		nodesCount += leftChild->getNodesCount();	
 		leavesCount += leftChild->getLeavesCount();	
+		height = std::max(height, leftChild->getHeight() + 1);
 	}
 
 	if(rightChild) {
 		nodesCount += rightChild->getNodesCount();	
 		leavesCount += rightChild->getLeavesCount();	
+		height = std::max(height, rightChild->getHeight() + 1);
 	}
 }
 

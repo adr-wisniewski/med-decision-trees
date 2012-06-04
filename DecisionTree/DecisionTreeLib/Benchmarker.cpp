@@ -10,16 +10,11 @@
 #include "Splitter.h"
 #include "Tester.h"
 
-namespace {
-	const float DefaultTestSetRatio = 0.3f;	
-	const float DefaultPruningSetRatio = 0.0f;	
-}
-
 namespace Benchmark {
 
-Benchmarker::Benchmarker() 
-	: testSetRatio(DefaultTestSetRatio), 
-	pruningSetRatio(DefaultPruningSetRatio),
+Benchmarker::Benchmarker(float testSetRatio, float pruningSetRatio) 
+	: testSetRatio(testSetRatio), 
+	pruningSetRatio(pruningSetRatio),
 	tree(nullptr),
 	prunedTree(nullptr)
 {
@@ -54,7 +49,7 @@ bool Benchmarker::initialize(const std::string &datasetName, Data::Importer::dat
 
 	std::cout << "\tBuilding tree" << std::endl;
 	tree = builder.build(trainingData).release();
-	tester.test(tree, testData, treeErrors);
+	tester.test(tree, testData, treeMetrics);
 
 	assert(tree);
 	return true;
@@ -66,7 +61,7 @@ void Benchmarker::run(const Tree::Pruner &pruner)
 
 	Tree::Node *treeClone = tree->clone().release();
 	pruner.prune(*treeClone, pruningData, trainingData);
-	tester.test(treeClone, testData, prunedTreeErrors);
+	tester.test(treeClone, testData, prunedTreeMetrics);
 
 	prunedTree = treeClone;
 }

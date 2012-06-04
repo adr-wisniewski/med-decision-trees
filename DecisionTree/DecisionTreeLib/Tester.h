@@ -10,12 +10,12 @@ namespace Data {
 
 namespace Benchmark {
 
-	class ConfusionMatrix;
+	struct Metrics;
 
 	class Tester
 	{
 	public:
-		void test(const Tree::Node *tree, const Data::DataSet &data, ConfusionMatrix &errors);
+		void test(const Tree::Node *tree, const Data::DataSet &data, Metrics &metrics);
 	};
 
 }

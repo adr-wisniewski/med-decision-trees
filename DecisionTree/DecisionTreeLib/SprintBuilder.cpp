@@ -167,7 +167,7 @@ std::auto_ptr<Node> SprintBuilder::build(const Data::DataSet& data) const {
 	std::vector<AttributeList> attributeLists;
 	context.prepareAttributeLists(attributeLists);
 
-	Node *root = new Node(data.getClassValues());
+	Node *root = new Node(data.getClassValues(), 1);
 	Utils::generateContinousIndexes(root->getTrainingObjects(), data.getObjectsCount());
 	buildRecursive(root, attributeLists, context);
 	return std::auto_ptr<Node>(root);
@@ -189,8 +189,9 @@ void SprintBuilder::buildRecursive(Node *node,
 			context.assignTest(node, split);
 			
 			// create nodes
-			Node *left = new Node(context.data.getClassValues());
-			Node *right = new Node(context.data.getClassValues());
+			unsigned ruleLength = node->getRuleLength() + 1;
+			Node *left = new Node(context.data.getClassValues(), ruleLength);
+			Node *right = new Node(context.data.getClassValues(), ruleLength);
 			node->setLeftChild(left);
 			node->setRightChild(right);
 
