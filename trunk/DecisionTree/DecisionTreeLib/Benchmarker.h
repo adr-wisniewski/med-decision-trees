@@ -2,7 +2,7 @@
 
 #include "Importer.h"
 #include "Tester.h"
-#include "ConfusionMatrix.h"
+#include "Metrics.h"
 #include "DataSet.h"
 
 namespace Tree {
@@ -16,7 +16,7 @@ namespace Benchmark {
 	class Benchmarker
 	{
 	public:
-		Benchmarker();
+		Benchmarker(float testSetRatio, float pruningSetRatio);
 		~Benchmarker(void);
 
 		inline void setTestSetRatio(float ratio) { testSetRatio = ratio; }
@@ -25,24 +25,27 @@ namespace Benchmark {
 		bool initialize(const std::string &datasetName, Data::Importer::dataType dataType, const Tree::Builder &builder);
 		void run(const Tree::Pruner &pruner) ;
 		
-		inline const ConfusionMatrix& getTreeErrors() const { return treeErrors; }
-		inline const ConfusionMatrix& getPrunedErrors() const { return prunedTreeErrors; }
+		inline const Metrics& getTreeMetrics() const { return treeMetrics; }
+		inline const Metrics& getPrunedTreeMetrics() const { return prunedTreeMetrics; }
+		
+		inline const Tree::Node& getTree() const { return *tree; }
+		inline const Tree::Node& getPrunedTree() const { return *prunedTree; }
 
 	private:
 		float testSetRatio;
 		float pruningSetRatio;
-
-		ConfusionMatrix treeErrors;
-		ConfusionMatrix prunedTreeErrors;
+	
+		Data::DataSet trainingData;
+		Data::DataSet testData;
+		Data::DataSet pruningData;
 
 		const Tree::Node *tree;
 		const Tree::Node *prunedTree;
 
 		Tester tester;
 
-		Data::DataSet trainingData;
-		Data::DataSet testData;
-		Data::DataSet pruningData;
+		Metrics treeMetrics;
+		Metrics prunedTreeMetrics;
 	};
 
 }

@@ -28,10 +28,10 @@ namespace Tree {
 
 	class Node {
 	public:
-		Node(unsigned classValues);
+		Node(unsigned classValues, unsigned ruleLength);
 		~Node();
 
-		unsigned predict(const Data::AttributeValue* object) const;
+		unsigned predict(const Data::AttributeValue* object, unsigned *outRuleLength = nullptr) const;
 		inline bool test(const Data::AttributeValue* object) const { return nodeTest.Test(object); }
 
 		// CLONING
@@ -66,6 +66,8 @@ namespace Tree {
 
 		inline unsigned getNodesCount() const { return nodesCount; }
 		inline unsigned getLeavesCount() const { return leavesCount; }
+		inline unsigned getHeight() const { return height; }
+		inline unsigned getRuleLength() const { return ruleLength; }
 		void updateNodesCount();
 
 	private:
@@ -79,6 +81,8 @@ namespace Tree {
 		bool leaf;
 		unsigned nodesCount;
 		unsigned leavesCount;
+		unsigned height;
+		unsigned ruleLength;
 	};
 
 }
