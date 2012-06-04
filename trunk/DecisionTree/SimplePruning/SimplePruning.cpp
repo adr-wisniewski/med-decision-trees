@@ -7,6 +7,7 @@
 #include "Benchmarker.h"
 #include "SprintBuilder.h"
 #include "Pruner.h"
+#include "RepPruner.h"
 
 using namespace Data;
 using namespace Tree;
@@ -21,13 +22,11 @@ namespace {
 	std::string datasetName = "connect-4.data";
 	Data::Importer::dataType dataType = Data::Importer::CONNECT4;
 
-	/*
 	Pruner* pruners [] = {
-		new IrepPruner(),
-		// new RepPruner(),
-		// new MepPruner(),
+		new RepPruner("RepPruner01"),
+		//new MepPruner("MepPruner01"),
+		//new IrepPruner(),
 	};
-	*/
 }
 
 namespace {
@@ -39,7 +38,7 @@ int main()
 {
 	// let's go!
 	Benchmarker benchmarker;
-	std::cout << "BUILDING TREE with dataset: " << datasetName << std::endl;
+	std::cout << "BENCHMARKING TREE with dataset: " << datasetName << std::endl;
 
 	SprintBuilder builder(minNodes, minConfidence);
 	if(benchmarker.initialize(datasetName, dataType, builder)) {
@@ -50,14 +49,12 @@ int main()
 	}
 
 	// benchmark pruners
-	/*
 	for(unsigned i = 0; i < ARRAY_LENGTH(pruners); ++i) {
 		Pruner* pruner = pruners[i];
 		std::cout << "TESTING PRUNER: " << pruner->getName() << std::endl;
 		benchmarker.run(*pruner);
 		std::cout << "MISCLASSIFICATION: " << benchmarker.getPrunedErrors().getErrorPercentage() << "%" << std::endl;
 	}
-	*/
 
 	return ERROR_OK;
 }

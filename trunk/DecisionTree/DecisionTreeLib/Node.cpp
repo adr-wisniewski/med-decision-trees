@@ -1,10 +1,12 @@
 #include "stdafx.h"
 #include "Node.h"
+#include <algorithm>
 
 namespace Tree {
 
 Node::Node(unsigned classValues) 
-	: leftChild(nullptr), rightChild(nullptr), classesCounts(classValues, 0)
+	: leftChild(nullptr), rightChild(nullptr), 
+	classesCounts(classValues, 0), nodesCount(0), leavesCount(0)
 {
 	
 }
@@ -12,6 +14,28 @@ Node::Node(unsigned classValues)
 Node::~Node() {
 	delete leftChild;
 	delete rightChild;
+}
+
+std::auto_ptr<Node> Node::clone() const {
+	Node *result = new Node(classesCounts.size());
+	result->nodeTest = nodeTest;
+	result->majorityClass = majorityClass;
+	result->confidence = confidence;
+	result->leaf = leaf;
+	result->nodesCount = nodesCount;
+	result->leavesCount = leavesCount;
+
+	result->trainingObjects.resize(trainingObjects.size());
+	result->classesCounts.resize(classesCounts.size());
+	std::copy(trainingObjects.begin(), trainingObjects.end(), result->trainingObjects.begin());
+	std::copy(classesCounts.begin(), classesCounts.end(), result->classesCounts.begin());
+
+	if(!leaf) {
+		result->setLeftChild(leftChild->clone().release());
+		result->setRightChild(rightChild->clone().release());
+	}
+
+	return std::auto_ptr<Node>(result);
 }
 
 unsigned Node::predict(const Data::AttributeValue* object) const {
@@ -25,6 +49,27 @@ unsigned Node::predict(const Data::AttributeValue* object) const {
 		return leftChild->predict(object);
 	} else {
 		return rightChild->predict(object);
+	}
+}
+
+void Node::updateNodesCount() {
+	nodesCount = 0;
+	leavesCount = 0;
+
+	if(leaf) {
+		++leavesCount;
+	} else {
+		++nodesCount;
+	}
+
+	if(leftChild) {
+		nodesCount += leftChild->getNodesCount();	
+		leavesCount += leftChild->getLeavesCount();	
+	}
+
+	if(rightChild) {
+		nodesCount += rightChild->getNodesCount();	
+		leavesCount += rightChild->getLeavesCount();	
 	}
 }
 

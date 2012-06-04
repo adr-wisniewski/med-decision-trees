@@ -47,6 +47,9 @@
     <ClInclude Include="Builder.h">
       <Filter>Tree</Filter>
     </ClInclude>
+    <ClInclude Include="RepPruner.h">
+      <Filter>Tree</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DataSet.cpp">
@@ -74,6 +77,12 @@
     </ClCompile>
     <ClCompile Include="Benchmarker.cpp">
       <Filter>Benchmark</Filter>
+    </ClCompile>
+    <ClCompile Include="RepPruner.cpp">
+      <Filter>Tree</Filter>
+    </ClCompile>
+    <ClCompile Include="Pruner.cpp">
+      <Filter>Tree</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

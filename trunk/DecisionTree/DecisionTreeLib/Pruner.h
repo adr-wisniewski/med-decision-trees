@@ -11,12 +11,15 @@ namespace Tree {
 	class Pruner
 	{
 	public:
-		Pruner(const std::string& name) : name(name) {}
+		Pruner(const char* name) : name(name) {}
 		virtual ~Pruner(void) {}
 
-		virtual std::auto_ptr<Node> prune(const Node &tree, const Data::DataSet &pruningSet, const Data::DataSet &trainingSet) const = 0;
+		virtual void prune(Node &tree, const Data::DataSet &pruningSet, const Data::DataSet &trainingSet) const = 0;
 	
 		inline const std::string& getName() { return name; }
+
+	protected:
+		void pruneSubtree(Node *subtree) const;
 
 	private:
 		const std::string name;

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <limits>
 #include <set>
+#include <iostream>
 
 namespace Tree {
 
@@ -72,23 +73,25 @@ namespace Tree {
 	class SprintBuilder::Context {
 
 	public:
-		Context(const Data::DataSet& data) : data(data) {
+		Context(const Data::DataSet& data) : data(data), buildNodes(0) {
 			const unsigned classes = data.getClassValues();
 			const unsigned valuesMax = std::max(data.getNominalValuesMaximum(), 1u);
 
 			objectsIn = new unsigned[classes];
 			objectsOut = new unsigned[classes];
 			objectsCount = new unsigned[classes * valuesMax];
+
+			objectsSplit = new bool[data.getObjectsCount()];
 		}
 
 		~Context() {
 			delete [] objectsIn;
 			delete [] objectsOut;
 			delete [] objectsCount;
+			delete [] objectsSplit;
 		}
 
 		void prepareAttributeLists(std::vector<AttributeList> &litsts);
-		void fillAllObjectsVector(std::vector<unsigned> &vec);
 		void calculateMajorityClass(Node *node);
 		bool findBestSplit(const std::vector<AttributeList> &attributeLists, SplitCandidate &best);
 		void assignTest(Node *node, SplitCandidate &best) const;
@@ -125,6 +128,18 @@ namespace Tree {
 			memset(objectsCount, 0, sizeof(unsigned) * classes * values);
 		}
 
+		void resetSplitObjects() {
+			memset(objectsSplit, 0, sizeof(bool) * data.getObjectsCount());
+		}
+
+		inline void incrementBuildNodesCount() {
+			++buildNodes;
+		}
+
+		inline unsigned getBuildNodes() {
+			return buildNodes;
+		}
+
 		const Data::DataSet& data;
 
 	private:
@@ -132,6 +147,8 @@ namespace Tree {
 		unsigned *objectsIn;
 		unsigned *objectsOut;
 		unsigned *objectsCount;
+		bool *objectsSplit;
+		unsigned buildNodes;
 	};
 
 //---------------------------------------------------------------------------
@@ -151,7 +168,7 @@ std::auto_ptr<Node> SprintBuilder::build(const Data::DataSet& data) const {
 	context.prepareAttributeLists(attributeLists);
 
 	Node *root = new Node(data.getClassValues());
-	context.fillAllObjectsVector(root->getTrainingObjects());
+	Utils::generateContinousIndexes(root->getTrainingObjects(), data.getObjectsCount());
 	buildRecursive(root, attributeLists, context);
 	return std::auto_ptr<Node>(root);
 }
@@ -196,6 +213,12 @@ void SprintBuilder::buildRecursive(Node *node,
 	}
 
 	node->SetLeaf(leaf);
+	node->updateNodesCount();
+
+	context.incrementBuildNodesCount();
+	if( context.getBuildNodes() % 1000 == 0 ) {
+		std::cout << "\t\t" << context.getBuildNodes() << " nodes" << std::endl;
+	}
 }
 
 
@@ -238,15 +261,6 @@ void SprintBuilder::Context::prepareAttributeLists(std::vector<AttributeList> &l
 		} else {
 			assert(false);
 		}
-	}
-}
-
-void SprintBuilder::Context::fillAllObjectsVector(std::vector<unsigned> &vec) {
-	unsigned objectsCount = data.getObjectsCount();
-	vec.resize(objectsCount);
-
-	for(unsigned i = 0; i < objectsCount; ++i) {
-		vec[i] = i;
 	}
 }
 
@@ -411,14 +425,16 @@ void SprintBuilder::Context::splitSamples(const Node *node,
 
 	const std::vector<unsigned> &samples = node->getTrainingObjects();
 	unsigned samplesCount = samples.size();
+	resetSplitObjects();
 
 	left.reserve(samplesCount);
 	right.reserve(samplesCount);
-
+	
 	for(auto o = samples.begin(), e = samples.end(); o != e; ++o) { // O(n)
 		unsigned object = *o;
 		if(node->test(data.getObject(object))) {
 			left.push_back(object);
+			objectsSplit[object] = true;
 		} else {
 			right.push_back(object);
 		}
@@ -431,12 +447,7 @@ void SprintBuilder::Context::splitAttributeLists(const std::vector<AttributeList
 	const std::vector<unsigned> &samplesLeft,
 	const std::vector<unsigned> &samplesRight) {
 
-	std::set<unsigned> leftSamples; // this could be a hash set
-	for(auto s = samplesLeft.begin(), e = samplesLeft.end(); s != e; ++s) {
-		leftSamples.insert(*s); // PERFORMANCE: copying (think how to do it faster)
-	}
-
-	unsigned leftSamplesCount = leftSamples.size();
+	unsigned leftSamplesCount = samplesLeft.size();
 	unsigned rightSamplesCount = samplesRight.size();
 
 	// split lists
@@ -456,7 +467,7 @@ void SprintBuilder::Context::splitAttributeLists(const std::vector<AttributeList
 
 		// split data
 		for(auto i = list.entries.begin(), e = list.entries.end(); i != e; ++i) {
-			if(leftSamples.find(i->objectIndex) != leftSamples.end()) {
+			if(objectsSplit[i->objectIndex]) {
 				left.entries.push_back(*i);
 			} else {
 				right.entries.push_back(*i);
