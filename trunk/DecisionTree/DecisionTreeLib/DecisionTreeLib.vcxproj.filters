@@ -50,6 +50,7 @@
     <ClInclude Include="RepPruner.h">
       <Filter>Tree</Filter>
     </ClInclude>
+    <ClInclude Include="MepPruner.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DataSet.cpp">
@@ -84,5 +85,6 @@
     <ClCompile Include="Pruner.cpp">
       <Filter>Tree</Filter>
     </ClCompile>
+    <ClCompile Include="MepPruner.cpp" />
   </ItemGroup>
 </Project>
