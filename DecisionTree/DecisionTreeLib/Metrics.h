@@ -7,6 +7,7 @@ namespace Benchmark {
 	{
 		ConfusionMatrix errors;
 		float averageRuleLength;
+		float attributesUsedPercent;
 	};
 
 }

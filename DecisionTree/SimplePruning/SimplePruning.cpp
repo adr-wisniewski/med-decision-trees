@@ -74,11 +74,12 @@ void showResult(const char* label, float value, float referenceValue, const char
 
 void showResults(const Node &tree, const Node &referenceTree, const Metrics& metrics, const Metrics& referenceMetrics) {
 	showResult("ERRORS", metrics.errors.getErrorPercentage(), referenceMetrics.errors.getErrorPercentage(), "%");
-	showResult("AVERAGE RULE LENGTH", metrics.averageRuleLength, referenceMetrics.averageRuleLength);
 	showResult("TREE INNER NODES", (float)tree.getNodesCount(), (float)referenceTree.getNodesCount());
 	showResult("TREE LEAVES", (float)tree.getLeavesCount(), (float)referenceTree.getLeavesCount());
 	showResult("TREE ALL NODES", (float)(tree.getNodesCount()+tree.getLeavesCount()), (float)(referenceTree.getNodesCount()+referenceTree.getLeavesCount()));
 	showResult("TREE HEIGHT", (float)tree.getHeight(), (float)referenceTree.getHeight());
+	showResult("AVERAGE RULE LENGTH", metrics.averageRuleLength, referenceMetrics.averageRuleLength);
+	showResult("ATTRIBUTES USED", metrics.attributesUsedPercent, referenceMetrics.attributesUsedPercent, "%");
 }
 
 
