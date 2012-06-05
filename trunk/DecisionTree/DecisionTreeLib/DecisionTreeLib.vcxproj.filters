@@ -51,7 +51,9 @@
       <Filter>Tree</Filter>
     </ClInclude>
     <ClInclude Include="MepPruner.h" />
-    <ClInclude Include="Metrics.h" />
+    <ClInclude Include="Metrics.h">
+      <Filter>Benchmark</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DataSet.cpp">
@@ -87,6 +89,8 @@
       <Filter>Tree</Filter>
     </ClCompile>
     <ClCompile Include="MepPruner.cpp" />
-    <ClCompile Include="Metrics.cpp" />
+    <ClCompile Include="Metrics.cpp">
+      <Filter>Benchmark</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
